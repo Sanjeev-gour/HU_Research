@@ -1,0 +1,2 @@
+F110_ROS_Simulator:f110_msgs:map_controller:steering_lookup
+-DCATKIN_DEVEL_PREFIX=/home/sanjeev/f110_ws/devel -DCMAKE_INSTALL_PREFIX=/home/sanjeev/f110_ws/install -G Unix Makefiles

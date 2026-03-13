@@ -1,0 +1,7 @@
+set(steering_lookup_SETUP_PY_SETUP_MODULE "distutils.core")
+set(steering_lookup_SETUP_PY_VERSION "0.0.0")
+set(steering_lookup_SETUP_PY_SCRIPTS "")
+set(steering_lookup_SETUP_PY_PACKAGES "steering_lookup")
+set(steering_lookup_SETUP_PY_PACKAGE_DIRS "src/steering_lookup")
+set(steering_lookup_SETUP_PY_MODULES "")
+set(steering_lookup_SETUP_PY_MODULE_DIRS "")
