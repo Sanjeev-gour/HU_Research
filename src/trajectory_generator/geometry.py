@@ -3,7 +3,7 @@ from scipy.interpolate import splprep, splev
 
 def compute_spline(x,y,num_points=1000):
 
-    tck,u = splprep([x,y],s=0.3,per=True)
+    tck,u = splprep([x,y],s=1.0,per=True)
 
     u_fine = np.linspace(0,1,num_points)
 

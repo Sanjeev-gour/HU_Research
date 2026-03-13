@@ -8,6 +8,6 @@ def compute_curvature(tck,num_points=1000):
     dx,dy = splev(u,tck,der=1)
     ddx,ddy = splev(u,tck,der=2)
 
-    kappa = (dx*ddy - dy*ddx)/((dx**2+dy**2)**1.5 + 1e-6)
+    kappa = (dx*ddy - dy*ddx)/((dx**2 + dy**2)**1.5 + 1e-6)
 
     return kappa
