@@ -2,32 +2,27 @@
 
 import rosbag
 import csv
+import numpy as np
 
 bag = rosbag.Bag("lap_record.bag")
 
-x_list = []
-y_list = []
+points = []
 
-for topic, msg, t in bag.read_messages():
-    # Print topic once to debug
-    print("Reading topic:", topic)
-    break
-
-# Now actually extract
 for topic, msg, t in bag.read_messages():
     if "odom" in topic:
         x = msg.pose.pose.position.x
         y = msg.pose.pose.position.y
-        x_list.append(x)
-        y_list.append(y)
+        points.append([x,y])
 
 bag.close()
 
-print("Total points extracted:", len(x_list))
+points = np.array(points)
 
-with open("centerline.csv", "w") as f:
+# remove controller oscillation
+points = points[::4]
+
+with open("centerline.csv","w") as f:
     writer = csv.writer(f)
-    for x, y in zip(x_list, y_list):
-        writer.writerow([x, y])
+    writer.writerows(points)
 
-print("centerline.csv generated.")
+print("centerline.csv generated")
