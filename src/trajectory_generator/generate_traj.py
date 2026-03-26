@@ -21,7 +21,7 @@ def resample(x,y,ds=0.05):
 
     return x_new,y_new
 
-centerline = np.loadtxt("centerline.csv",delimiter=',')
+centerline = np.loadtxt("global_wpnts_overtake_xy.csv",delimiter=',')
 
 x = centerline[:,0]
 y = centerline[:,1]

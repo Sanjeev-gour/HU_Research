@@ -4,6 +4,7 @@ import rospy
 import numpy as np
 import torch
 import torch.nn as nn
+import time
 
 from ackermann_msgs.msg import AckermannDriveStamped
 from geometry_msgs.msg import PoseStamped
@@ -14,16 +15,12 @@ class Controller:
 
     def __init__(self):
 
-        # Correct ROS node name
         rospy.init_node('ml_controller', anonymous=True)
 
-        # Loop rate
         self.loop_rate = 40
-
-        # Current car position
         self.position = None
 
-        # Load ML model
+        # ===== MODEL =====
         self.model = nn.Sequential(
             nn.Linear(3,64),
             nn.ReLU(),
@@ -32,21 +29,25 @@ class Controller:
             nn.Linear(64,2)
         )
 
-        # Load trained weights
-        model_path = "/home/sanjeev/f110_ws/src/ML_controller/ml_model_1.pth"
+        # ===== LOAD MODEL =====
+        model_path = "/home/sanjeev/f110_ws/src/ML_controller/ml_model_4.pth"
         self.model.load_state_dict(torch.load(model_path))
         self.model.eval()
 
-        rospy.loginfo("ML model loaded successfully")
+        rospy.loginfo("✅ ML model loaded successfully")
 
-        # Publisher for steering and speed
+        # ===== INFERENCE TIME TRACKING =====
+        self.times = []
+        self.counter = 0
+
+        # ===== PUBLISHER =====
         self.drive_pub = rospy.Publisher(
             "/vesc/high_level/ackermann_cmd_mux/input/nav_1",
             AckermannDriveStamped,
             queue_size=10
         )
 
-        # Subscriber for car pose
+        # ===== SUBSCRIBER =====
         rospy.Subscriber("/car_state/pose", PoseStamped, self.car_state_cb)
 
     def car_state_cb(self, data):
@@ -75,21 +76,36 @@ class Controller:
 
             x, y, yaw = self.position
 
-            # Create ML input
+            # ===== INPUT =====
             state = torch.tensor([x, y, yaw], dtype=torch.float32)
 
-            # Predict steering and speed
+            # ===== INFERENCE TIMING =====
+            start_time = time.perf_counter()
+
             with torch.no_grad():
                 output = self.model(state)
 
+            end_time = time.perf_counter()
+            inference_time = (end_time - start_time) * 1000  # ms
+
+            # ===== STORE TIMES =====
+            self.times.append(inference_time)
+            self.counter += 1
+
+            # ===== PRINT AVERAGE EVERY 100 STEPS =====
+            if self.counter % 100 == 0:
+                avg_time = np.mean(self.times)
+                rospy.loginfo(f"Average Inference Time: {avg_time:.4f} ms")
+
+            # ===== OUTPUT =====
             steering = output[0].item()
             speed = output[1].item()
 
-            # Safety limits
+            # ===== SAFETY LIMITS =====
             steering = np.clip(steering, -0.4, 0.4)
             speed = np.clip(speed, 0, 6)
 
-            # Publish command
+            # ===== PUBLISH =====
             ack_msg = AckermannDriveStamped()
             ack_msg.header.stamp = rospy.Time.now()
             ack_msg.header.frame_id = "base_link"

@@ -8,10 +8,13 @@ from visualization_msgs.msg import Marker
 from f110_msgs.msg import WpntArray
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 from steering_lookup.lookup_steer_angle import LookupSteerAngle
+import time
 
 
 class Controller:
     def __init__(self):
+        self.times = []
+        self.counter = 0
         rospy.init_node('control_node', anonymous=True)
 
         # Get parameters for the MAP controller
@@ -86,6 +89,7 @@ class Controller:
             ack_msg.header.frame_id = 'base_link'
 
             if self.waypoints.shape[0] > 2:
+                start_time = time.perf_counter() #edited
                 idx_nearest_waypoint = self.nearest_waypoint(self.position[:2], self.waypoints[:, :2])
 
                 # Desired speed at waypoint closest to car
@@ -111,9 +115,21 @@ class Controller:
                     steering_angle = self.steer_lookup.lookup_steer_angle(lat_acc, target_speed)
                     ack_msg.drive.steering_angle = steering_angle
                     ack_msg.drive.speed = np.max(target_speed, 0)  # no negative speed
+                    
+                    #edited
+                    end_time = time.perf_counter()
+                    inference_time = (end_time - start_time) * 1000  # ms
+                    
+                    self.times.append(inference_time)
+                    self.counter += 1
+                        
+                    # Print average every 100 steps
+                    if self.counter % 100 == 0:
+                        avg_time = np.mean(self.times)
+                        rospy.loginfo(f"[MAP] Avg Inference Time: {avg_time:.4f} ms")
 
                     self.visualize_lookahead(lookahead_point)
-                    self.visualize_steering(steering_angle)
+                    self.visualize_steering(steering_angle) #edited till here
 
             # If there are no waypoints, publish zero speed and steer to STOP
             else:
