@@ -27,7 +27,7 @@ model = nn.Sequential(
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 loss_fn = nn.MSELoss()
 
-epochs = 3000
+epochs = 4000
 
 # ===== TRAINING LOOP =====
 for epoch in range(epochs):
@@ -54,6 +54,6 @@ for epoch in range(epochs):
 print("Model trained")
 
 # ===== SAVE MODEL =====
-torch.save(model.state_dict(), "ml_model_4.pth")
+torch.save(model.state_dict(), "ml_model_5.pth")
 
-print("Model saved as ml_model_4.pth")
+print("Model saved as ml_model_5.pth")

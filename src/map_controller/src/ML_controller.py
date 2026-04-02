@@ -30,7 +30,7 @@ class Controller:
         )
 
         # ===== LOAD MODEL =====
-        model_path = "/home/sanjeev/f110_ws/src/ML_controller/ml_model_4.pth"
+        model_path = "/home/sanjeev/f110_ws/src/ML_controller/ml_model_5.pth"
         self.model.load_state_dict(torch.load(model_path))
         self.model.eval()
 
