@@ -21,7 +21,7 @@ points = np.array(points)
 # remove controller oscillation
 points = points[::4]
 
-with open("centerline.csv","w") as f:
+with open("path.csv","w") as f:
     writer = csv.writer(f)
     writer.writerows(points)
 

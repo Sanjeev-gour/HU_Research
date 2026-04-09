@@ -72,6 +72,8 @@ class Controller:
             speed = waypoint.vx_mps
             self.waypoints[i] = [waypoint.x_m, waypoint.y_m, speed]
 
+    
+
     def control_loop(self):
         """
         Control loop for the MAP controller.
@@ -89,11 +91,11 @@ class Controller:
             ack_msg.header.frame_id = 'base_link'
 
             if self.waypoints.shape[0] > 2:
-                start_time = time.perf_counter() #edited
+                start_time = time.perf_counter() #addition 
                 idx_nearest_waypoint = self.nearest_waypoint(self.position[:2], self.waypoints[:, :2])
 
                 # Desired speed at waypoint closest to car
-                velocity_scale =0.825
+                velocity_scale =0.60
                 target_speed = velocity_scale * self.waypoints[idx_nearest_waypoint, 2]
                 #target_speed = self.waypoints[idx_nearest_waypoint, 2]
 
@@ -105,7 +107,7 @@ class Controller:
                                                                  self.waypoints[:, :2],
                                                                  idx_nearest_waypoint)
 
-                if lookahead_point.any() is not None:
+                if lookahead_point.any() is not None: # edited this is the main code
                     # Vector from the current position to the point at lookahead distance
                     position_la_vector = np.array([lookahead_point[0] - self.position[0], lookahead_point[1] - self.position[1]])
                     yaw = self.position[2]
@@ -116,7 +118,7 @@ class Controller:
                     ack_msg.drive.steering_angle = steering_angle
                     ack_msg.drive.speed = np.max(target_speed, 0)  # no negative speed
                     
-                    #edited
+                    #addition start
                     end_time = time.perf_counter()
                     inference_time = (end_time - start_time) * 1000  # ms
                     
@@ -129,7 +131,8 @@ class Controller:
                         rospy.loginfo(f"[MAP] Avg Inference Time: {avg_time:.4f} ms")
 
                     self.visualize_lookahead(lookahead_point)
-                    self.visualize_steering(steering_angle) #edited till here
+                    self.visualize_steering(steering_angle)
+                    #addition end
 
             # If there are no waypoints, publish zero speed and steer to STOP
             else:
