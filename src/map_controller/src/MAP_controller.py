@@ -95,7 +95,7 @@ class Controller:
                 idx_nearest_waypoint = self.nearest_waypoint(self.position[:2], self.waypoints[:, :2])
 
                 # Desired speed at waypoint closest to car
-                velocity_scale =0.60
+                velocity_scale =0.825
                 target_speed = velocity_scale * self.waypoints[idx_nearest_waypoint, 2]
                 #target_speed = self.waypoints[idx_nearest_waypoint, 2]
 
