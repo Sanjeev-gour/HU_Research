@@ -28,7 +28,7 @@ class Controller:
         self.steer_lookup = LookupSteerAngle(LUT_name)
 
         # Set loop rate in hertz
-        self.loop_rate = 200
+        self.loop_rate = 40
 
         # Initialize variables
         self.position = None  # current position in map frame [x, y, theta]
