@@ -6,7 +6,7 @@
   <arg name="base_map_dir" default="$(find f1tenth_simulator)"/>
 
   <!-- Launch a map from the maps folder-->
-  <arg name="map_name" default="berlin"/>
+  <arg name="map_name" default="overtake_map"/>
   <node pkg="map_server" name="map_server" type="map_server" args="$(arg base_map_dir)/maps/$(arg map_name)/$(arg map_name).yaml"/>
 
   <!-- Launch the racecar model -->
