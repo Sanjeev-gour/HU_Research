@@ -7,7 +7,7 @@ from scipy.spatial import KDTree
 from tf.transformations import euler_from_quaternion
 
 # ===== CONFIG =====
-BAG_PATH = "run_berlin2.bag"
+BAG_PATH = "run_porto_0.825.bag"
 LOOKAHEAD = 10   # number of waypoints ahead
 
 # ===== LOAD BAG =====
@@ -139,7 +139,7 @@ df = pd.DataFrame(dataset, columns=[
     "steering"
 ])
 
-df.to_csv("training_data_berlin2.csv", index=False)
+df.to_csv("training_data_porto_0.825.csv", index=False)
 
-print("✅ Dataset saved as training_data_berlin2.csv")
+print("✅ Dataset saved as training_data_porto_0.825.csv")
 print("Total samples:", len(df))

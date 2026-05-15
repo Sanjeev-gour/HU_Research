@@ -1,6 +1,6 @@
 #for recording the lap
 
-rosbag record -O laprecord.bag \
+rosbag record -O run_porto_0.825.bag \
 /car_state/odom \
 /car_state/pose \
 /global_waypoints \
