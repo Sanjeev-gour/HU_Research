@@ -1,8 +1,15 @@
 # F1TENTH ML Controller — MAP Extension
 
-This project extends the MAP (Model- and Acceleration-based Pursuit) controller with ML-based steering controllers for the F1TENTH 1:10 scale autonomous racing platform. Three controller types are available: the original physics-based MAP controller, a neural network controller (PyTorch MLP), and a classical ML controller (XGBoost, Random Forest, SVM, Gaussian Process).
+This project extends the MAP (Model- and Acceleration-based Pursuit) controller with ML-based steering controllers for the F1TENTH 1:10 scale autonomous racing platform.
 
-Data was collected from real car runs on 5 maps at 2 speed profiles each. Models were trained on 4 maps and tested on the 5th (porto) to evaluate generalization to unseen tracks.
+Instead of predicting steering from raw pose, the ML models use physics-based features — cross-track error, heading error, curvature, velocity, and lookahead curvature — making them map-agnostic. This allows a single trained model to generalize to tracks it has never seen before.
+
+Three controller types are available alongside the original:
+- **MAP Controller** — physics-based baseline using L1 guidance and a steering lookup table
+- **ML Controller** — deep neural network (PyTorch MLP) trained on data from multiple maps
+- **ML Controller 2** — classical ML models (XGBoost, Random Forest, SVM, Gaussian Process)
+
+Data was collected from real car runs on 5 maps at 2 speed profiles (0.6 and 0.825 velocity scale). Models were trained on 4 maps and tested on porto to evaluate generalization to unseen tracks. Controller performance was compared statistically using the Wilcoxon signed-rank test on lateral error distributions.
 
 ## Maps
 
