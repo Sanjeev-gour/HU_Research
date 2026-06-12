@@ -267,6 +267,7 @@ plt.savefig(
     bbox_inches='tight'
 )
 
+
 plt.show()
 
 print("\n✅ Figure saved as:")
