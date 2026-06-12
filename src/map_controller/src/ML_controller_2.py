@@ -1,10 +1,7 @@
 #!/usr/bin/env python3
 
-#!/usr/bin/env python3
-
 import rospy
 import numpy as np
-import torch
 import time
 import joblib
 
@@ -16,95 +13,35 @@ from tf.transformations import euler_from_quaternion
 from scipy.spatial import KDTree
 
 
-# =============================================================
-# ELM MODEL CLASS
-# MUST MATCH TRAINING FILE EXACTLY
-# =============================================================
-
-class ELMRegressor:
-
-    def __init__(
-        self,
-        input_size,
-        hidden_size=128,
-        activation='relu'
-    ):
-
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.activation = activation
-
-        self.W = None
-        self.b = None
-        self.beta = None
-
-    # =========================================================
-    # ACTIVATION FUNCTION
-    # =========================================================
-
-    def _activate(self, X):
-
-        H = np.dot(X, self.W) + self.b
-
-        if self.activation == 'relu':
-            return np.maximum(0, H)
-
-        elif self.activation == 'tanh':
-            return np.tanh(H)
-
-        elif self.activation == 'sigmoid':
-            return 1 / (1 + np.exp(-H))
-
-        else:
-            raise ValueError("Unsupported activation")
-
-    # =========================================================
-    # PREDICTION
-    # =========================================================
-
-    def predict(self, X):
-
-        H = self._activate(X)
-
-        return H @ self.beta
-
-
-# =============================================================
-# CONTROLLER
-# =============================================================
-
-class ELMController:
+class ClassicalMLController:
 
     def __init__(self):
 
         rospy.init_node('ml_controller_2', anonymous=True)
 
-        # =====================================================
+        # =============================================================
         # PARAMETERS
-        # =====================================================
-
+        # =============================================================
         self.loop_rate = 40
         self.LOOKAHEAD = 10
-        self.velocity_scale = 0.9
+        self.velocity_scale = 0.825
 
-        # =====================================================
-        # LOAD ELM MODEL
-        # =====================================================
+        # =============================================================
+        # LOAD MODEL
+        # =============================================================
 
-        model_path = "/home/sanjeev/f110_ws/src/ML_controller/models_path/model_elm.pth"
+        model_path = "/home/sanjeev/f110_ws/src/ML_controller/models_path/model_gp.pth"
 
-        rospy.loginfo("Loading ELM model...")
+        rospy.loginfo("Loading Classical ML model...")
 
-        self.model = torch.load(
-            model_path,
-            weights_only=False
-        )
+        # FIXED HERE
+        self.model = joblib.load(model_path)
 
-        rospy.loginfo("✅ ELM model loaded")
+        rospy.loginfo("✅ Model loaded")
 
-        # =====================================================
-        # LOAD GENERALIZED SCALER
-        # =====================================================
+        # =============================================================
+        # LOAD SCALER
+        # =============================================================
 
         scaler_path = "/home/sanjeev/f110_ws/src/ML_controller/scaler_generalized.save"
 
@@ -112,9 +49,9 @@ class ELMController:
 
         rospy.loginfo("✅ Scaler loaded")
 
-        # =====================================================
+        # =============================================================
         # STATE VARIABLES
-        # =====================================================
+        # =============================================================
 
         self.position = None
         self.yaw = None
@@ -123,17 +60,17 @@ class ELMController:
         self.waypoints = None
         self.tree = None
 
-        # =====================================================
+        # =============================================================
         # TIMING
-        # =====================================================
+        # =============================================================
 
         self.times = []
         self.counter = 0
         self.WARMUP_STEPS = 100
 
-        # =====================================================
+        # =============================================================
         # PUBLISHER
-        # =====================================================
+        # =============================================================
 
         self.drive_pub = rospy.Publisher(
             "/vesc/high_level/ackermann_cmd_mux/input/nav_1",
@@ -141,9 +78,9 @@ class ELMController:
             queue_size=10
         )
 
-        # =====================================================
+        # =============================================================
         # SUBSCRIBERS
-        # =====================================================
+        # =============================================================
 
         rospy.Subscriber(
             "/car_state/pose",
@@ -163,9 +100,9 @@ class ELMController:
             self.wp_cb
         )
 
-    # =========================================================
+    # =============================================================
     # POSE CALLBACK
-    # =========================================================
+    # =============================================================
 
     def pose_cb(self, msg):
 
@@ -182,20 +119,19 @@ class ELMController:
         ])[2]
 
         self.position = np.array([x, y])
-
         self.yaw = yaw
 
-    # =========================================================
+    # =============================================================
     # ODOM CALLBACK
-    # =========================================================
+    # =============================================================
 
     def odom_cb(self, msg):
 
         self.vx = msg.twist.twist.linear.x
 
-    # =========================================================
+    # =============================================================
     # WAYPOINT CALLBACK
-    # =========================================================
+    # =============================================================
 
     def wp_cb(self, msg):
 
@@ -215,15 +151,13 @@ class ELMController:
 
             self.waypoints = np.array(wp_list)
 
-            self.tree = KDTree(
-                self.waypoints[:, :2]
-            )
+            self.tree = KDTree(self.waypoints[:, :2])
 
             rospy.loginfo("✅ Waypoints loaded")
 
-    # =========================================================
+    # =============================================================
     # MAIN LOOP
-    # =========================================================
+    # =============================================================
 
     def run(self):
 
@@ -232,15 +166,14 @@ class ELMController:
         while not rospy.is_shutdown():
 
             if self.position is None or self.waypoints is None:
-
                 rate.sleep()
                 continue
 
             x, y = self.position
 
-            # =================================================
+            # =============================================================
             # NEAREST WAYPOINT
-            # =================================================
+            # =============================================================
 
             _, idx = self.tree.query([x, y])
 
@@ -248,9 +181,9 @@ class ELMController:
 
             wp_x, wp_y, wp_yaw, kappa, wp_vx = wp
 
-            # =================================================
-            # SIGNED LATERAL ERROR
-            # =================================================
+            # =============================================================
+            # LATERAL ERROR
+            # =============================================================
 
             dx = x - wp_x
             dy = y - wp_y
@@ -264,16 +197,13 @@ class ELMController:
 
             error_vec = np.array([dx, dy])
 
-            cross = np.cross(
-                heading_vec,
-                error_vec
-            )
+            cross = np.cross(heading_vec, error_vec)
 
             d_m = np.sign(cross) * d_m
 
-            # =================================================
+            # =============================================================
             # HEADING ERROR
-            # =================================================
+            # =============================================================
 
             heading_error = self.yaw - wp_yaw
 
@@ -282,9 +212,9 @@ class ELMController:
                 np.cos(heading_error)
             )
 
-            # =================================================
+            # =============================================================
             # LOOKAHEAD CURVATURE
-            # =================================================
+            # =============================================================
 
             idx_la = min(
                 idx + self.LOOKAHEAD,
@@ -293,9 +223,9 @@ class ELMController:
 
             kappa_la = self.waypoints[idx_la][3]
 
-            # =================================================
+            # =============================================================
             # FEATURE VECTOR
-            # =================================================
+            # =============================================================
 
             features = np.array([[
                 d_m,
@@ -305,77 +235,65 @@ class ELMController:
                 kappa_la
             ]])
 
-            # =================================================
+            # =============================================================
             # SCALE FEATURES
-            # =================================================
+            # =============================================================
 
-            features_scaled = self.scaler.transform(
-                features
-            )
+            features_scaled = self.scaler.transform(features)
 
-            # =================================================
+            # =============================================================
             # MODEL INFERENCE
-            # =================================================
+            # =============================================================
 
             start_time = time.perf_counter()
 
-            steering = self.model.predict(
-                features_scaled
-            )[0]
+            steering = self.model.predict(features_scaled)[0]
 
             end_time = time.perf_counter()
 
-            inference_time = (
-                (end_time - start_time) * 1000
-            )
+            inference_time = (end_time - start_time) * 1000
 
-            # =================================================
-            # TIMING STATS
-            # =================================================
+            # =============================================================
+            # TIMING LOG
+            # =============================================================
 
             self.counter += 1
 
             if self.counter > self.WARMUP_STEPS:
-
                 self.times.append(inference_time)
 
             if self.counter % 100 == 0:
 
-                avg_time = np.mean(self.times)
+                if len(self.times) > 0:
 
-                rospy.loginfo(
-                    f"[ELM] Avg Inference: "
-                    f"{avg_time:.6f} ms"
-                )
+                    avg_time = np.mean(self.times)
 
-            # =================================================
+                    rospy.loginfo(
+                        f"[Classical ML] Avg inference: {avg_time:.4f} ms"
+                    )
+
+            # =============================================================
             # SAFETY CLIP
-            # =================================================
+            # =============================================================
 
-            steering = np.clip(
-                steering,
-                -0.4,
-                0.4
-            )
+            steering = np.clip(steering, -0.4, 0.4)
 
-            # =================================================
+            # =============================================================
             # SPEED
-            # =================================================
+            # =============================================================
 
             speed = wp_vx * self.velocity_scale
 
-            # =================================================
-            # PUBLISH COMMAND
-            # =================================================
+            # =============================================================
+            # PUBLISH
+            # =============================================================
 
             msg = AckermannDriveStamped()
 
             msg.header.stamp = rospy.Time.now()
-
             msg.header.frame_id = "base_link"
 
             msg.drive.steering_angle = steering
-
             msg.drive.speed = speed
 
             self.drive_pub.publish(msg)
@@ -383,18 +301,18 @@ class ELMController:
             rate.sleep()
 
 
-# =============================================================
-# MAIN
-# =============================================================
-
 if __name__ == "__main__":
 
-    controller = ELMController()
+    controller = ClassicalMLController()
 
     controller.run()
 
+
+
+#code for elm
 # import rospy
 # import numpy as np
+# import torch
 # import time
 # import joblib
 
@@ -406,35 +324,95 @@ if __name__ == "__main__":
 # from scipy.spatial import KDTree
 
 
-# class ClassicalMLController:
+# # =============================================================
+# # ELM MODEL CLASS
+# # MUST MATCH TRAINING FILE EXACTLY
+# # =============================================================
+
+# class ELMRegressor:
+
+#     def __init__(
+#         self,
+#         input_size,
+#         hidden_size=128,
+#         activation='relu'
+#     ):
+
+#         self.input_size = input_size
+#         self.hidden_size = hidden_size
+#         self.activation = activation
+
+#         self.W = None
+#         self.b = None
+#         self.beta = None
+
+#     # =========================================================
+#     # ACTIVATION FUNCTION
+#     # =========================================================
+
+#     def _activate(self, X):
+
+#         H = np.dot(X, self.W) + self.b
+
+#         if self.activation == 'relu':
+#             return np.maximum(0, H)
+
+#         elif self.activation == 'tanh':
+#             return np.tanh(H)
+
+#         elif self.activation == 'sigmoid':
+#             return 1 / (1 + np.exp(-H))
+
+#         else:
+#             raise ValueError("Unsupported activation")
+
+#     # =========================================================
+#     # PREDICTION
+#     # =========================================================
+
+#     def predict(self, X):
+
+#         H = self._activate(X)
+
+#         return H @ self.beta
+
+
+# # =============================================================
+# # CONTROLLER
+# # =============================================================
+
+# class ELMController:
 
 #     def __init__(self):
 
 #         rospy.init_node('ml_controller_2', anonymous=True)
 
-#         # =============================================================
+#         # =====================================================
 #         # PARAMETERS
-#         # =============================================================
+#         # =====================================================
+
 #         self.loop_rate = 40
 #         self.LOOKAHEAD = 10
-#         self.velocity_scale = 0.825
+#         self.velocity_scale = 0.9
 
-#         # =============================================================
-#         # LOAD MODEL
-#         # =============================================================
+#         # =====================================================
+#         # LOAD ELM MODEL
+#         # =====================================================
 
-#         model_path = "/home/sanjeev/f110_ws/src/ML_controller/models_path/model_gp.pth"
+#         model_path = "/home/sanjeev/f110_ws/src/ML_controller/models_path/model_elm.pth"
 
-#         rospy.loginfo("Loading Classical ML model...")
+#         rospy.loginfo("Loading ELM model...")
 
-#         # FIXED HERE
-#         self.model = joblib.load(model_path)
+#         self.model = torch.load(
+#             model_path,
+#             weights_only=False
+#         )
 
-#         rospy.loginfo("✅ Model loaded")
+#         rospy.loginfo("✅ ELM model loaded")
 
-#         # =============================================================
-#         # LOAD SCALER
-#         # =============================================================
+#         # =====================================================
+#         # LOAD GENERALIZED SCALER
+#         # =====================================================
 
 #         scaler_path = "/home/sanjeev/f110_ws/src/ML_controller/scaler_generalized.save"
 
@@ -442,9 +420,9 @@ if __name__ == "__main__":
 
 #         rospy.loginfo("✅ Scaler loaded")
 
-#         # =============================================================
+#         # =====================================================
 #         # STATE VARIABLES
-#         # =============================================================
+#         # =====================================================
 
 #         self.position = None
 #         self.yaw = None
@@ -453,17 +431,17 @@ if __name__ == "__main__":
 #         self.waypoints = None
 #         self.tree = None
 
-#         # =============================================================
+#         # =====================================================
 #         # TIMING
-#         # =============================================================
+#         # =====================================================
 
 #         self.times = []
 #         self.counter = 0
 #         self.WARMUP_STEPS = 100
 
-#         # =============================================================
+#         # =====================================================
 #         # PUBLISHER
-#         # =============================================================
+#         # =====================================================
 
 #         self.drive_pub = rospy.Publisher(
 #             "/vesc/high_level/ackermann_cmd_mux/input/nav_1",
@@ -471,9 +449,9 @@ if __name__ == "__main__":
 #             queue_size=10
 #         )
 
-#         # =============================================================
+#         # =====================================================
 #         # SUBSCRIBERS
-#         # =============================================================
+#         # =====================================================
 
 #         rospy.Subscriber(
 #             "/car_state/pose",
@@ -493,9 +471,9 @@ if __name__ == "__main__":
 #             self.wp_cb
 #         )
 
-#     # =============================================================
+#     # =========================================================
 #     # POSE CALLBACK
-#     # =============================================================
+#     # =========================================================
 
 #     def pose_cb(self, msg):
 
@@ -512,19 +490,20 @@ if __name__ == "__main__":
 #         ])[2]
 
 #         self.position = np.array([x, y])
+
 #         self.yaw = yaw
 
-#     # =============================================================
+#     # =========================================================
 #     # ODOM CALLBACK
-#     # =============================================================
+#     # =========================================================
 
 #     def odom_cb(self, msg):
 
 #         self.vx = msg.twist.twist.linear.x
 
-#     # =============================================================
+#     # =========================================================
 #     # WAYPOINT CALLBACK
-#     # =============================================================
+#     # =========================================================
 
 #     def wp_cb(self, msg):
 
@@ -544,13 +523,15 @@ if __name__ == "__main__":
 
 #             self.waypoints = np.array(wp_list)
 
-#             self.tree = KDTree(self.waypoints[:, :2])
+#             self.tree = KDTree(
+#                 self.waypoints[:, :2]
+#             )
 
 #             rospy.loginfo("✅ Waypoints loaded")
 
-#     # =============================================================
+#     # =========================================================
 #     # MAIN LOOP
-#     # =============================================================
+#     # =========================================================
 
 #     def run(self):
 
@@ -559,14 +540,15 @@ if __name__ == "__main__":
 #         while not rospy.is_shutdown():
 
 #             if self.position is None or self.waypoints is None:
+
 #                 rate.sleep()
 #                 continue
 
 #             x, y = self.position
 
-#             # =============================================================
+#             # =================================================
 #             # NEAREST WAYPOINT
-#             # =============================================================
+#             # =================================================
 
 #             _, idx = self.tree.query([x, y])
 
@@ -574,9 +556,9 @@ if __name__ == "__main__":
 
 #             wp_x, wp_y, wp_yaw, kappa, wp_vx = wp
 
-#             # =============================================================
-#             # LATERAL ERROR
-#             # =============================================================
+#             # =================================================
+#             # SIGNED LATERAL ERROR
+#             # =================================================
 
 #             dx = x - wp_x
 #             dy = y - wp_y
@@ -590,13 +572,16 @@ if __name__ == "__main__":
 
 #             error_vec = np.array([dx, dy])
 
-#             cross = np.cross(heading_vec, error_vec)
+#             cross = np.cross(
+#                 heading_vec,
+#                 error_vec
+#             )
 
 #             d_m = np.sign(cross) * d_m
 
-#             # =============================================================
+#             # =================================================
 #             # HEADING ERROR
-#             # =============================================================
+#             # =================================================
 
 #             heading_error = self.yaw - wp_yaw
 
@@ -605,9 +590,9 @@ if __name__ == "__main__":
 #                 np.cos(heading_error)
 #             )
 
-#             # =============================================================
+#             # =================================================
 #             # LOOKAHEAD CURVATURE
-#             # =============================================================
+#             # =================================================
 
 #             idx_la = min(
 #                 idx + self.LOOKAHEAD,
@@ -616,9 +601,9 @@ if __name__ == "__main__":
 
 #             kappa_la = self.waypoints[idx_la][3]
 
-#             # =============================================================
+#             # =================================================
 #             # FEATURE VECTOR
-#             # =============================================================
+#             # =================================================
 
 #             features = np.array([[
 #                 d_m,
@@ -628,65 +613,77 @@ if __name__ == "__main__":
 #                 kappa_la
 #             ]])
 
-#             # =============================================================
+#             # =================================================
 #             # SCALE FEATURES
-#             # =============================================================
+#             # =================================================
 
-#             features_scaled = self.scaler.transform(features)
+#             features_scaled = self.scaler.transform(
+#                 features
+#             )
 
-#             # =============================================================
+#             # =================================================
 #             # MODEL INFERENCE
-#             # =============================================================
+#             # =================================================
 
 #             start_time = time.perf_counter()
 
-#             steering = self.model.predict(features_scaled)[0]
+#             steering = self.model.predict(
+#                 features_scaled
+#             )[0]
 
 #             end_time = time.perf_counter()
 
-#             inference_time = (end_time - start_time) * 1000
+#             inference_time = (
+#                 (end_time - start_time) * 1000
+#             )
 
-#             # =============================================================
-#             # TIMING LOG
-#             # =============================================================
+#             # =================================================
+#             # TIMING STATS
+#             # =================================================
 
 #             self.counter += 1
 
 #             if self.counter > self.WARMUP_STEPS:
+
 #                 self.times.append(inference_time)
 
 #             if self.counter % 100 == 0:
 
-#                 if len(self.times) > 0:
+#                 avg_time = np.mean(self.times)
 
-#                     avg_time = np.mean(self.times)
+#                 rospy.loginfo(
+#                     f"[ELM] Avg Inference: "
+#                     f"{avg_time:.6f} ms"
+#                 )
 
-#                     rospy.loginfo(
-#                         f"[Classical ML] Avg inference: {avg_time:.4f} ms"
-#                     )
-
-#             # =============================================================
+#             # =================================================
 #             # SAFETY CLIP
-#             # =============================================================
+#             # =================================================
 
-#             steering = np.clip(steering, -0.4, 0.4)
+#             steering = np.clip(
+#                 steering,
+#                 -0.4,
+#                 0.4
+#             )
 
-#             # =============================================================
+#             # =================================================
 #             # SPEED
-#             # =============================================================
+#             # =================================================
 
 #             speed = wp_vx * self.velocity_scale
 
-#             # =============================================================
-#             # PUBLISH
-#             # =============================================================
+#             # =================================================
+#             # PUBLISH COMMAND
+#             # =================================================
 
 #             msg = AckermannDriveStamped()
 
 #             msg.header.stamp = rospy.Time.now()
+
 #             msg.header.frame_id = "base_link"
 
 #             msg.drive.steering_angle = steering
+
 #             msg.drive.speed = speed
 
 #             self.drive_pub.publish(msg)
@@ -694,8 +691,13 @@ if __name__ == "__main__":
 #             rate.sleep()
 
 
+# # =============================================================
+# # MAIN
+# # =============================================================
+
 # if __name__ == "__main__":
 
-#     controller = ClassicalMLController()
+#     controller = ELMController()
 
 #     controller.run()
+

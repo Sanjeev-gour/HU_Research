@@ -1,158 +1,324 @@
-#for recording the lap
-
-rosbag record -O run_porto_0.825.bag \
-/car_state/odom \
-/car_state/pose \
-/global_waypoints \
-/vesc/high_level/ackermann_cmd_mux/input/nav_1
-
-#About data and method descriptions
-
-/Data
-#extract_wpnts.py is the file used for extracting points from the recorded bag or already present bag.
-
-#Method 1
-training_data_1.csv was used in Method 1 which uses extract_data.py file for extraction and 
-model_1.py for training in ML_controller folder
-
-ml_model_5 and ml_model_final.pth are the model trained using this data
-
-#Method 2
-Rest other data present in the Data file is with the Map name in it, also have the run bags which contain the real time data 
-of the car running in different maps which is converted to csv 
-
-extract_data_from_mapruns is the file used to extract the data in the form of run.bags in the form of csv file.
-
-for training ML_model_newdata.py is used present in ML_controller and the only trained model is ml_model_new which
-was only trained on training_data_overtakemap.csv till now, yet to be generalized.
-
-the training_data_maps.csv is the data collected at velocity_scale of 0.825 and where in front
-of map name there is 2 it is the data on velocity_profile of 0.60
-
-THE CODE FOR METHOD 1 ML CONTROLLER
-# import rospy
-# import numpy as np
-# import torch
-# import torch.nn as nn
-# import time
-
-# from ackermann_msgs.msg import AckermannDriveStamped
-# from geometry_msgs.msg import PoseStamped
-# from tf.transformations import euler_from_quaternion
+================================================================================
+                        F1TENTH ML CONTROLLER — PROJECT INFO
+================================================================================
+Platform  : F1TENTH 1:10 Scale Autonomous Racing Car
+Framework : ROS Noetic | Python 3 | PyTorch | Scikit-learn
+Branch    : ml_generalization
+================================================================================
 
 
-# class Controller:
+================================================================================
+ 1. PROJECT OVERVIEW
+================================================================================
 
-#     def __init__(self):
+This project extends the MAP (Model- and Acceleration-based Pursuit) controller
+with ML-based steering controllers. Three controller types are available:
 
-#         rospy.init_node('ml_controller', anonymous=True)
+  - MAP Controller       → physics-based (baseline)
+  - ML Controller        → deep neural network (PyTorch MLP)
+  - ML Controller 2      → classical ML (scikit-learn)
 
-#         self.loop_rate = 100
-#         self.position = None
-
-#         # ===== MODEL =====
-#         self.model = nn.Sequential(
-#             nn.Linear(3,64),
-#             nn.ReLU(),
-#             nn.Linear(64,64),
-#             nn.ReLU(),
-#             nn.Linear(64,2)
-#         )
-
-#         # ===== LOAD MODEL =====
-#         model_path = "/home/sanjeev/f110_ws/src/ML_controller/ml_model_5.pth"
-#         self.model.load_state_dict(torch.load(model_path))
-#         self.model.eval()
-
-#         rospy.loginfo("✅ ML model loaded successfully")
-
-#         # ===== INFERENCE TIME TRACKING =====
-#         self.times = []
-#         self.counter = 0
-
-#         # ===== PUBLISHER =====
-#         self.drive_pub = rospy.Publisher(
-#             "/vesc/high_level/ackermann_cmd_mux/input/nav_1",
-#             AckermannDriveStamped,
-#             queue_size=10
-#         )
-
-#         # ===== SUBSCRIBER =====
-#         rospy.Subscriber("/car_state/pose", PoseStamped, self.car_state_cb)
-
-#     def car_state_cb(self, data):
-
-#         x = data.pose.position.x
-#         y = data.pose.position.y
-
-#         yaw = euler_from_quaternion([
-#             data.pose.orientation.x,
-#             data.pose.orientation.y,
-#             data.pose.orientation.z,
-#             data.pose.orientation.w
-#         ])[2]
-
-#         self.position = [x, y, yaw]
-
-#     def control_loop(self):
-
-#         rate = rospy.Rate(self.loop_rate)
-
-#         while not rospy.is_shutdown():
-
-#             if self.position is None:
-#                 rate.sleep()
-#                 continue
-
-#             x, y, yaw = self.position
-
-#             # ===== INPUT =====
-#             state = torch.tensor([x, y, yaw], dtype=torch.float32)
-
-#             # ===== INFERENCE TIMING =====
-#             start_time = time.perf_counter()
-
-#             with torch.no_grad():
-#                 output = self.model(state)
-
-#             end_time = time.perf_counter()
-#             inference_time = (end_time - start_time) * 1000  # ms
-
-#             # ===== STORE TIMES =====
-#             self.times.append(inference_time)
-#             self.counter += 1
-
-#             # ===== PRINT AVERAGE EVERY 100 STEPS =====
-#             if self.counter % 100 == 0:
-#                 avg_time = np.mean(self.times)
-#                 rospy.loginfo(f"Average Inference Time: {avg_time:.4f} ms")
-
-#             # ===== OUTPUT =====
-#             steering = output[0].item()
-#             speed = output[1].item()
-
-#             # ===== SAFETY LIMITS =====
-#             steering = np.clip(steering, -0.4, 0.4)
-#             speed = np.clip(speed, 0, 6)
-
-#             # ===== PUBLISH =====
-#             ack_msg = AckermannDriveStamped()
-#             ack_msg.header.stamp = rospy.Time.now()
-#             ack_msg.header.frame_id = "base_link"
-
-#             ack_msg.drive.steering_angle = steering
-#             ack_msg.drive.speed = speed
-
-#             self.drive_pub.publish(ack_msg)
-
-#             rate.sleep()
+Data was collected from real car runs on 5 maps at 2 speed profiles each.
+Models were trained on 4 maps and tested on the 5th (porto) for generalization.
 
 
-# if __name__ == "__main__":
+================================================================================
+ 2. HOW TO RUN
+================================================================================
 
-#     controller = Controller()
-#     controller.control_loop()
+  MAP Controller (baseline):
+    roslaunch map_controller sim_MAP.launch map_name:=<map>
+
+  ML Controller — Neural Network (PyTorch MLP):
+    roslaunch map_controller sim_ML_controller.launch
+    → runs: map_controller/src/ML_controller.py
+    → model: ML_controller/models_path/ml_model_relu_best.pth
+
+  ML Controller 2 — Classical ML:
+    roslaunch map_controller sim_ML_2_controller.launch
+    → runs: map_controller/src/ML_controller_2.py
+    → model: ML_controller/models_path/model_xgboost.pth  (currently active)
+
+  Pure Pursuit Controller (comparison):
+    roslaunch map_controller sim_PP.launch
+  Available maps: berlin | f | hangar | overtake_map | porto
+  Default map in all launch files: overtake_map
+
+  To change the map, pass map_name argument:
+    roslaunch map_controller sim_MAP.launch map_name:=porto
 
 
-I collected the data from all the runs with two different velocity_profile, there 
-were 5 maps of which data of 4 maps was trained and 5th map was tested.
+================================================================================
+ 3. RECORDING A LAP (rosbag)
+================================================================================
+
+  rosbag record -O run_<mapname>_<velocity>.bag \
+    /car_state/odom \
+    /car_state/pose \
+    /global_waypoints \
+    /vesc/high_level/ackermann_cmd_mux/input/nav_1
+
+  Recorded bags are stored in: src/Data/bag_files/
+
+
+================================================================================
+ 4. DATA PIPELINE
+================================================================================
+
+  Step 1 — Record lap as .bag file (see section 3)
+
+  Step 2 — Extract CSV from bag:
+    Script : src/Data/execution_files/extract_data_from_mapruns.py
+    Input  : .bag file
+    Output : training_data_<map>_<velocity>.csv
+
+  Step 3 — Extract waypoints from bag (if needed):
+    Script : src/Data/execution_files/extract_wpnts.py
+
+  Step 4 — Process / merge data:
+    Notebook: src/Data/execution_files/dataprocessing.ipynb
+
+  Step 5 — Train model (see section 6)
+
+
+================================================================================
+ 5. DATA FILES  (src/Data/)
+================================================================================
+
+--- bag_files/ ---
+  Raw rosbag recordings from real car runs. Two velocity profiles per map:
+    velocity_scale 0.825 → normal speed
+    velocity_scale 0.6   → reduced speed (slower profile)
+
+  run_berlin_0.825.bag       run_berlin_0.6.bag
+  run_f_0.825.bag            run_f_0.6.bag
+  run_hangar_0.825.bag       run_hangar_0.6.bag
+  run_overtakemap_0.825.bag  run_overtakemap_0.6.bag
+  run_porto_0.825.bag        run_porto_0.6.bag
+
+--- data_files/ ---
+  Processed CSV files used for training. Each CSV has ~14,000 rows (1 header).
+  Columns: d_m, heading_error, kappa, vx, kappa_lookahead, steering
+
+  Per-map individual files (used for inspection / ablation):
+    training_data_berlin_0.6.csv       (~14k rows)
+    training_data_berlin_0.825.csv     (~14k rows)
+    training_data_f_0.6.csv            (~14k rows)
+    training_data_f_0.825.csv          (~14k rows)
+    training_data_hangar_0.6.csv       (~14k rows)
+    training_data_hangar_0.825.csv     (~14k rows)
+    training_data_overtake_0.6.csv     (~14k rows)
+    training_data_overtake_0.825.csv   (~14k rows)
+    training_data_porto_0.6.csv        (~14k rows)   ← TEST MAP (not in training)
+    training_data_porto_0.825.csv      (~14k rows)   ← TEST MAP (not in training)
+
+  Merged / method-specific files:
+    method1_training_data.csv          (24,209 rows) → used by Method 1
+    method2V0_data.csv                 (24,338 rows) → used by Method 2 V0
+    method2V1V2_final_clean.csv        (78,639 rows) → used by Method 2 V1, V2, ClassicML
+    method2V1V2_noisydata.csv         (384,126 rows) → noisy version (not used in final training)
+
+--- plots&fig/ ---
+  All figures generated for the paper/report:
+    training_curve_generalized.png
+    training_curve_generalized_2.png
+    activation_comparison.png
+    wilcoxon_paired_test_final_portomap.png
+    fig4_generalization.png
+    fig5_map_heatmap.png
+    fig6_ml_heatmap.png
+    fig7_lateral_error.png
+    fig8_stability_limits.png
+    ml_basics_models_comparison.png
+
+--- execution_files/ ---
+  Scripts for data extraction and figure generation:
+    extract_data_method1.py       → extract data (Method 1 style, raw pose)
+    extract_data_method2.py       → extract data from map run bags (Method 2)
+    extract_wpnts_from_bag.py     → extract global waypoints from bag
+    dataprocessing.ipynb          → data cleaning, merging, analysis notebook
+    Researchpaper_charts.py       → generates paper figures
+    wilcoxon_test.py              → Wilcoxon signed-rank statistical test
+
+
+================================================================================
+ 6. MODELS  (src/ML_controller/models/)
+================================================================================
+
+All Method 2+ models use 5 input features:
+  [d_m, heading_error, kappa, vx, kappa_lookahead]
+  → 1 output: steering angle (radians)
+
+Training split: 80% train / 20% test
+Scaler: StandardScaler (saved to ML_controller/scaler_generalized.save)
+
+----------------------------------------------------------------------
+METHOD 1 — model_method1.py
+----------------------------------------------------------------------
+  Architecture : MLP  →  3 inputs (x, y, yaw)  →  64  →  64  →  2 outputs (steering, speed)
+  Dataset      : method1_training_data.csv  (24,209 rows)
+  Trained model: models_path/method1_model1.pth
+                 models_path/method1_model2.pth
+  Notes        : Early approach. Raw pose as input — not map-agnostic.
+                 Predicts both steering and speed simultaneously.
+
+----------------------------------------------------------------------
+METHOD 2 V0 — model_method2V0.py
+----------------------------------------------------------------------
+  Architecture : MLP  →  5 → 64 → 64 → 32 → 1
+  Dataset      : method2V0_data.csv  (24,338 rows, single map — overtake)
+  Trained model: models_path/method2_modelV0.pth
+  Notes        : First version with physics-based features. Trained on
+                 only one map. Not generalized.
+
+----------------------------------------------------------------------
+METHOD 2 V1 — model_method2V1.py
+----------------------------------------------------------------------
+  Architecture : MLP  →  5 → 64 → 64 → 32 → 1  |  ReLU + Dropout(0.1)
+  Dataset      : method2V1V2_final_clean.csv  (78,639 rows, 4 maps × 2 speeds)
+  Trained model: models_path/method2_modelV1_best.pth   (best val loss)
+                 models_path/method2_modelV1_final.pth  (final epoch)
+  Training maps: berlin, f, hangar, overtake  (both speed profiles)
+  Test map     : porto  (unseen during training)
+  Notes        : Generalized across maps. This is the main neural network model.
+
+----------------------------------------------------------------------
+METHOD 2 V2 — model_method2V2.py
+----------------------------------------------------------------------
+  Architecture : MLP  →  5 → 64 → 64 → 32 → 1  |  ReLU + Dropout(0.1)
+  Dataset      : method2V1V2_final_clean.csv  (78,639 rows)
+  Trained model: models_path/method2_modelV0.pth  (same architecture as V1)
+  Notes        : Same architecture as V1, different training configuration.
+
+----------------------------------------------------------------------
+ACTIVATION FUNCTION COMPARISON — (model_diff_activationfunc.py)
+----------------------------------------------------------------------
+  Architecture : MLP  →  5 → 64 → 64 → 32 → 1
+  Dataset      : method2V1V2_final_clean.csv
+  Trained models (all in models_path/):
+    ml_model_relu_best.pth       ← CURRENTLY USED IN ML_controller.py
+    ml_model_elu_best.pth
+    ml_model_leaky_relu_best.pth
+    ml_model_selu_best.pth
+    ml_model_tanh_best.pth
+  Notes        : All 5 activation functions compared. ReLU selected as best.
+                 Comparison plot: Data/plots&fig/activation_comparison.png
+
+----------------------------------------------------------------------
+CLASSICAL ML — model_method_classicML.py
+----------------------------------------------------------------------
+  Dataset      : method2V1V2_final_clean.csv  (78,639 rows)
+  RF / XGBoost trained on full dataset; SVM / GP on subset (expensive)
+
+  Model                  | Saved file               | Size
+  -----------------------|--------------------------|-------
+  Random Forest (100 trees, max_depth=15)
+                         | models_path/model_random_forest.pth | 66 MB
+  XGBoost (300 trees)    | models_path/model_xgboost.pth       | 1.4 MB
+  SVM (RBF kernel)       | models_path/model_svm.pth           | 275 KB
+  Gaussian Process (Matern kernel)
+                         | models_path/model_gp.pth            | 192 MB (LOCAL ONLY)
+
+  Note: model_gp.pth exceeds GitHub's 100 MB limit → stored locally only.
+        To use GP controller: switch model_path in ML_controller_2.py to model_gp.pth
+        and use joblib.load() instead of torch.load().
+
+
+================================================================================
+ 7. ACTIVE CONTROLLER CONFIGURATION
+================================================================================
+
+  sim_ML_controller.launch   → ML_controller.py
+    Model  : ml_model_relu_best.pth  (MLP, ReLU, 5→64→64→32→1)
+    Scaler : scaler_generalized.save
+    Speed  : velocity_scale = 0.825
+    Rate   : 40 Hz | Lookahead: 10 waypoints | Steering clip: ±0.4 rad
+
+  sim_ML_2_controller.launch → ML_controller_2.py
+    Model  : model_xgboost.pth  (Classical ML)
+    Scaler : scaler_generalized.save
+    Speed  : velocity_scale = 0.9
+    Rate   : 40 Hz | Lookahead: 10 waypoints | Steering clip: ±0.4 rad
+
+  To switch ML_controller_2 to a different model, change model_path and
+  load method in ML_controller_2.py:
+    - RF / XGBoost  → torch.load(path, weights_only=False)
+    - SVM / GP      → joblib.load(path)
+
+
+================================================================================
+ 8. STATISTICAL EVALUATION
+================================================================================
+
+  Script : src/Data/execution_files/wilcoxon_test.py
+  Test   : Wilcoxon signed-rank test (paired, non-parametric)
+  Purpose: Compare lateral error distributions between controllers
+  Plot   : Data/plots&fig/wilcoxon_paired_test_final_portomap.png
+
+
+================================================================================
+ 9. KEY DESIGN DECISIONS
+================================================================================
+
+  - Physics-based features (d_m, heading_error, kappa, vx, kappa_la) make
+    the model map-agnostic — same model works on unseen maps.
+
+  - Porto map used exclusively as test map — zero data from porto in training.
+
+  - Two speed profiles (0.6 and 0.825) used in training for speed generalization.
+
+  - Steering clipped to ±0.4 rad as safety limit on all ML controllers.
+
+  - Speed command = wp_vx * velocity_scale (from waypoint, not predicted by ML).
+
+  - StandardScaler fitted on training data and saved — same scaler used at
+    inference time in the ROS controller.
+
+
+================================================================================
+ 10. TRAJECTORY GENERATOR  (src/trajectory_generator/)
+================================================================================
+
+Generates the global racing line (global_wpnts.bag) used by all controllers.
+Files are numbered in execution order.
+
+--- Files ---
+  01_extract_path.py    → extracts x,y path from a recorded lap bag
+  02_optimizer.py       → smooths the path (Savitzky-Golay filter)
+  03_geometry.py        → fits a closed B-spline through the path
+  04_curvature.py       → computes curvature κ from spline derivatives
+  05_velocity.py        → assigns physics-based speed at each waypoint
+  06_bag_writer.py      → saves final trajectory as global_wpnts.bag
+  07_generate_traj.py   → main script: calls 02 → 03 → 04 → 05 → 06
+
+--- Data files ---
+  overtake_map_lap_record.bag     input  — raw lap recording (rosbag)
+  overtake_map_centerline_xy.csv  intermediate — x,y path extracted from bag
+  global_wpnts.bag                output — final trajectory for the controller
+
+--- Test maps ---
+  test | test_2 | test_map are clones of overtake_map used to test the results
+  of trajectory generation. Copy global_wpnts.bag into each of these map folders
+  to verify the generated trajectory before using it on the real overtake_map.
+
+--- Step-by-step ---
+
+  STEP 0 — Drive the car and record the lap:
+    Terminal 1: roslaunch map_controller sim_MAP.launch map_name:=overtake_map
+    Terminal 2: cd src/trajectory_generator
+                rosbag record -O overtake_map_lap_record.bag /car_state/odom
+    Press Ctrl+C after one full lap.
+
+  STEP 1 — Extract x,y centerline from the bag:
+    python3 01_extract_path.py
+    Output: overtake_map_centerline_xy.csv
+
+  STEP 2 — Generate the full trajectory bag:
+    python3 07_generate_traj.py
+    Output: global_wpnts.bag
+    (internally runs: smooth → spline → curvature → velocity → save bag)
+
+  STEP 3 — Copy bag to the map folder:
+    cp global_wpnts.bag src/F110_ROS_Simulator/maps/overtake_map/
+
+================================================================================

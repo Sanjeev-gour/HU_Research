@@ -2,11 +2,23 @@
 
 import numpy as np
 
-from geometry import compute_spline
-from curvature import compute_curvature
-from optimizer import minimize_curvature
-from velocity import compute_velocity_profile
-from bag_writer import save_waypoints_bag
+import importlib
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+_opt = importlib.import_module('02_optimizer')
+_geo = importlib.import_module('03_geometry')
+_cur = importlib.import_module('04_curvature')
+_vel = importlib.import_module('05_velocity')
+_bag = importlib.import_module('06_bag_writer')
+
+minimize_curvature       = _opt.minimize_curvature
+compute_spline           = _geo.compute_spline
+compute_curvature        = _cur.compute_curvature
+compute_velocity_profile = _vel.compute_velocity_profile
+save_waypoints_bag       = _bag.save_waypoints_bag
 
 def resample(x,y,ds=0.05):
 
@@ -21,7 +33,7 @@ def resample(x,y,ds=0.05):
 
     return x_new,y_new
 
-centerline = np.loadtxt("global_wpnts_overtake_xy.csv",delimiter=',')
+centerline = np.loadtxt("overtake_map_centerline_xy.csv",delimiter=',')
 
 x = centerline[:,0]
 y = centerline[:,1]
