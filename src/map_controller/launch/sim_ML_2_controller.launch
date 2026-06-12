@@ -26,8 +26,8 @@
   <node pkg="rosbag" type="play" name="glb_player" output="screen" args="-r 5 -q $(arg base_map_dir)/maps/$(arg map_name)/global_wpnts.bag">
   </node>
 
-  <!-- run MAP controller -->
-  <node pkg="map_controller" name="control_node" type="MAP_controller.py" output="screen">
+  <!-- run ML controller -->
+  <node pkg="map_controller" name="control_node" type="ML_controller_2.py" output="screen">
       <rosparam command="load" file="$(find map_controller)/cfg/map_params.yaml"/>
   </node>
 

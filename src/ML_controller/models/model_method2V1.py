@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 # Previously: single map data (training_data_overtake.csv)
 # Now: all 4 maps x 2 velocity profiles = 79k clean samples
 # =============================================================
-df = pd.read_csv("merged_training_data_clean_final.csv")
+df = pd.read_csv("/home/sanjeev/f110_ws/src/Data/data_files/method2V1V2_final_clean.csv")
 print(f"✅ Loaded dataset | Rows: {len(df)}")
 
 # =============================================================
@@ -126,7 +126,7 @@ scheduler = optim.lr_scheduler.ReduceLROnPlateau(
 EARLY_STOP_PATIENCE = 200      # stop if no improvement for 200 epochs
 best_val_loss       = float('inf')
 epochs_no_improve   = 0
-best_model_path     = "ml_model_generalized_best.pth"
+best_model_path     = "method2_modelV1_best.pth"
 
 # =============================================================
 # STEP 9: TRAINING LOOP
@@ -205,10 +205,10 @@ for epoch in range(EPOCHS):
 # _best  → best validation loss during training (use this)
 # _final → model state at last epoch
 # =============================================================
-torch.save(model.state_dict(), "ml_model_generalized_final.pth")
+torch.save(model.state_dict(), "method2_modelV1_final.pth")
 
 print(f"\n✅ Best model saved  : {best_model_path}")
-print(f"✅ Final model saved : ml_model_generalized_final.pth")
+print(f"✅ Final model saved : method2_modelV1_final.pth")
 print(f"✅ Best val loss     : {best_val_loss:.6f}")
 
 # =============================================================

@@ -13,7 +13,7 @@ import joblib
 # =============================================================
 # STEP 1: LOAD DATA
 # =============================================================
-df = pd.read_csv("merged_training_data_clean_final.csv")
+df = pd.read_csv("/home/sanjeev/f110_ws/src/Data/data_files/method2V1V2_final_clean.csv")
 print(f"✅ Loaded | Rows: {len(df)}")
 
 X = df[["d_m", "heading_error", "kappa", "vx", "kappa_lookahead"]].values

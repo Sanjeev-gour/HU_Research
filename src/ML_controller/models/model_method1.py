@@ -4,7 +4,7 @@ import torch.nn as nn
 from sklearn.model_selection import train_test_split
 
 # ===== LOAD DATA =====
-data = pd.read_csv("/home/sanjeev/f110_ws/src/Data/training_data_1.csv")
+data = pd.read_csv("/home/sanjeev/f110_ws/src/Data/data_files/method1_training_data.csv")
 
 X = data[["x","y","yaw"]].values
 Y = data[["steering","speed"]].values
@@ -54,6 +54,6 @@ for epoch in range(epochs):
 print("Model trained")
 
 # ===== SAVE MODEL =====
-torch.save(model.state_dict(), "ml_model_5.pth")
+torch.save(model.state_dict(), "method1_model.pth")
 
-print("Model saved as ml_model_5.pth")
+print("Model saved as method1_model2.pth")

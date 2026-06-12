@@ -8,25 +8,34 @@ import matplotlib.pyplot as plt
 
 # Unseen Map results (velocity_scale = 0.825)
 
+# MAP Controller - Porto Map - Velocity Scale 0.825 - 20 Laps
 map_lateral_errors = [
-    0.060, 0.058, 0.059, 0.060, 0.064,
-    0.058, 0.060, 0.060, 0.058, 0.059
+    0.059, 0.061, 0.063, 0.062, 0.062,
+    0.059, 0.060, 0.060, 0.060, 0.059,
+    0.061, 0.062, 0.060, 0.057, 0.061,
+    0.059, 0.060, 0.061, 0.058, 0.060
 ]
 
 map_lap_times = [
-    6.751, 6.525, 6.550, 6.550, 6.525,
-    6.550, 6.550, 6.525, 6.525, 6.525
+    6.750, 6.550, 6.525, 6.525, 6.525,
+    6.550, 6.550, 6.525, 6.525, 6.525,
+    6.550, 6.550, 6.550, 6.550, 6.525,
+    6.525, 6.550, 6.550, 6.550, 6.550
 ]
 
-# ML Controller (ReLU) Results
+# ML Controller (Our Method 2 V2) - Porto Map - Velocity Scale 0.825 - 20 Laps
 ml_lateral_errors = [
-    0.058, 0.068, 0.070, 0.070, 0.068,
-    0.069, 0.067, 0.071, 0.069, 0.070
+    0.061, 0.071, 0.070, 0.072, 0.070,
+    0.069, 0.071, 0.072, 0.070, 0.069,
+    0.067, 0.069, 0.070, 0.069, 0.070,
+    0.070, 0.071, 0.071, 0.067, 0.069
 ]
 
 ml_lap_times = [
-    6.777, 6.599, 6.525, 6.525, 6.575,
-    6.575, 6.550, 6.550, 6.575, 6.550
+    6.750, 6.575, 6.575, 6.549, 6.550,
+    6.574, 6.600, 6.575, 6.550, 6.575,
+    6.600, 6.575, 6.600, 6.550, 6.550,
+    6.575, 6.575, 6.575, 6.550, 6.550
 ]
 
 # =============================================================
@@ -253,7 +262,7 @@ ax.grid(True)
 plt.tight_layout()
 
 plt.savefig(
-    "wilcoxon_paired_line_and_boxplot_version2.png",
+    "wilcoxon_paired_test_final_portomap.png",
     dpi=300,
     bbox_inches='tight'
 )
@@ -261,4 +270,4 @@ plt.savefig(
 plt.show()
 
 print("\n✅ Figure saved as:")
-print("wilcoxon_paired_line_and_boxplot_version2.png")
+print("wilcoxon_paired_test_finl_portomap.png")

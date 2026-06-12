@@ -21,15 +21,11 @@ class MLController:
 
         rospy.init_node('ml_controller', anonymous=True)
 
-        # =============================================================
         # LOOP RATE
-        # =============================================================
         self.loop_rate = 40
 
-        # =============================================================
         # MODEL DEFINITION
         # MUST MATCH TRAINING ARCHITECTURE EXACTLY
-        # =============================================================
         self.model = nn.Sequential(
 
             nn.Linear(5, 64),
@@ -49,7 +45,7 @@ class MLController:
         # =============================================================
         # LOAD MODEL
         # =============================================================
-        model_path = "/home/sanjeev/f110_ws/src/ML_controller/ml_model_relu_best.pth"
+        model_path = "/home/sanjeev/f110_ws/src/ML_controller/models_path/ml_model_relu_best.pth"
 
         self.model.load_state_dict(torch.load(model_path))
 

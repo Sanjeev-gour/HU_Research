@@ -96,7 +96,7 @@
             print(f"Epoch {epoch+1}/{EPOCHS} | Train Loss: {train_loss:.6f} | Val Loss: {val_loss:.6f}")
 
     # ===== SAVE MODEL =====
-    torch.save(model.state_dict(), "ml_model_new.pth")
+    torch.save(model.state_dict(), "method2_modelV0.pth")
 
-    print("✅ Model saved as ml_model_new.pth")
+    print("✅ Model saved as method2_modelV0.pth")
     print("✅ Scaler saved as scaler.save")
