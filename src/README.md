@@ -32,7 +32,56 @@ Porto was used exclusively as the test map — no porto data was used during tra
 | `sim_ML_2_controller.launch` | Classical ML (XGBoost / RF / SVM / GP) |
 | `sim_PP.launch` | Pure Pursuit (geometric baseline) |
 
-For full project documentation see `src/Data/info.txt`.
+For full project documentation — models, data pipeline, training setup, trajectory generation, and statistical evaluation — see [`src/Data/info.txt`](Data/info.txt).
+
+---
+
+## How to Run the Project
+
+> For step-by-step details on each stage, refer to [`src/Data/info.txt`](Data/info.txt).
+
+### 1. Record a Lap
+
+Launch the simulator and record one full lap as a rosbag:
+
+```bash
+# Terminal 1 — start the simulator
+roslaunch map_controller sim_MAP.launch map_name:=overtake_map
+
+# Terminal 2 — record the lap
+rosbag record -O overtake_map_lap_record.bag /car_state/odom /car_state/pose /global_waypoints /vesc/high_level/ackermann_cmd_mux/input/nav_1
+```
+
+### 2. Generate the Trajectory
+
+Process the recorded bag into a racing line:
+
+```bash
+cd src/trajectory_generator
+python3 01_extract_path.py       # extract x,y centerline from bag
+python3 07_generate_traj.py      # smooth → spline → curvature → velocity → bag
+cp global_wpnts.bag ../F110_ROS_Simulator/maps/overtake_map/
+```
+
+### 3. Extract Training Data
+
+```bash
+cd src/Data/execution_files
+python3 extract_data_method2.py  # produces training_data_<map>_<speed>.csv
+```
+
+### 4. Train a Model
+
+```bash
+cd src/ML_controller/models
+python3 model_method2V1.py       # trains the generalized MLP
+```
+
+### 5. Run the ML Controller
+
+```bash
+roslaunch map_controller sim_ML_controller.launch
+```
 
 ---
 
