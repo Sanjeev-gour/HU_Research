@@ -1,0 +1,6 @@
+src/ML_controller/models_path/model_gp.pth
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
