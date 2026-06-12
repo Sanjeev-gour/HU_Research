@@ -9,7 +9,7 @@
     import joblib
 
     # ===== LOAD DATA =====
-    df = pd.read_csv("training_data_overtake.csv")
+    df = pd.read_csv("/home/sanjeev/f110_ws/src/Data/data_files/method2V0_data.csv")
 
     X = df[["d_m", "heading_error", "kappa", "vx", "kappa_lookahead"]].values
     y = df[["steering"]].values
