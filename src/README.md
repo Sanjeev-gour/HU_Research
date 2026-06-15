@@ -160,6 +160,10 @@ Alternatively, you can run the Pure Pursuit controller for comparison:
 roslaunch map_controller sim_PP.launch
 ```
 
+## Acknowledgements
+
+The MAP controller implementation used in this project is based on the work of Becker et al. (ICRA 2023), made publicly available at [ETH-PBL/MAP-Controller](https://github.com/ETH-PBL/MAP-Controller) under the GPL-3.0 license. This repository is also distributed under GPL-3.0 in compliance with that license.
+
 ## Reference
 
 This work builds on the MAP controller published at ICRA 2023. See the [pre-print](https://arxiv.org/pdf/2209.04346.pdf).
