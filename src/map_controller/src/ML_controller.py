@@ -34,7 +34,7 @@ class MLController:
         )
 
         model_path = "/home/sanjeev/f110_ws/src/ML_controller/models_path/model_method2V2_holdout_overtake.pth"
-        self.model.load_state_dict(torch.load(model_path))
+        self.model.load_state_dict(torch.load(model_path, weights_only=True))
         self.model.eval()  # disables dropout at inference time
 
         scaler_path = "/home/sanjeev/f110_ws/src/ML_controller/scaler_holdout_overtake.save"

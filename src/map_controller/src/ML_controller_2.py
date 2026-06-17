@@ -23,10 +23,10 @@ class ClassicalMLController:
         self.LOOKAHEAD = 10
         self.velocity_scale = 0.825
 
-        # Switch model_path and load method to change model:
-        #   RF / XGBoost  → joblib.load  or  torch.load(path, weights_only=False)
-        #   SVM / GP      → joblib.load
-        model_path = "/home/sanjeev/f110_ws/src/ML_controller/models_path/model_gp.pth"
+        # To switch model: change model_path and reload (all use joblib.load)
+        #   XGBoost → model_xgboost.pth  |  RF → model_random_forest.pth
+        #   SVM     → model_svm.pth      |  GP → model_gp.pth (192 MB, local only)
+        model_path = "/home/sanjeev/f110_ws/src/ML_controller/models_path/model_xgboost.pth"
         rospy.loginfo("Loading model...")
         self.model = joblib.load(model_path)
         rospy.loginfo("Model loaded")

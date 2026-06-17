@@ -91,9 +91,13 @@ generalizes to tracks it has never seen.
                 /vesc/high_level/ackermann_cmd_mux/input/nav_1
 
   Example (overtake map, speed 0.825):
-    rosbag record -O run_overtake_map_0.825.bag \
+    rosbag record -O run_overtakemap_0.825.bag \
       /car_state/odom /car_state/pose /global_waypoints \
       /vesc/high_level/ackermann_cmd_mux/input/nav_1
+
+  NOTE: The overtake map bag uses "overtakemap" (no underscore) to match
+        the actual filenames in bag_files/ and the BAG_PREFIX fix in
+        extract_data_method2.py.
 
   ── Recording an NN controller run (for trajectory comparison) ──────────────
   Terminal 1: roslaunch map_controller sim_ML_controller.launch map_name:=<mapname>
@@ -328,8 +332,9 @@ generalizes to tracks it has never seen.
     Speed  : velocity_scale = 0.825  (set in MAP controller params)
 
   sim_ML_2_controller.launch  →  ML_controller_2.py
-    Model  : model_xgboost.pth  (XGBoost, scikit-learn)
+    Model  : model_xgboost.pth  (XGBoost, scikit-learn — default)
     Scaler : scaler_holdout_porto.save
+    Note   : model_gp.pth (192 MB) is local-only and not on GitHub
     Map    : overtake_map  (default)
     Rate   : 40 Hz  |  Lookahead: 10 waypoints  |  Steering clip: ±0.4 rad
 

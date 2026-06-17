@@ -36,12 +36,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import joblib
 
-# ── Paths ─────────────────────────────────────────────────────────────────────
 DATA_DIR    = "/home/sanjeev/f110_ws/src/Data/data_files"
 MODELS_DIR  = "/home/sanjeev/f110_ws/src/ML_controller/models_path"
 SCALER_DIR  = "/home/sanjeev/f110_ws/src/ML_controller"
 
-# ── Hyperparameters (V2 — as reported in paper) ───────────────────────────────
+# Hyperparameters as reported in paper
 LR                    = 5e-4
 WEIGHT_DECAY          = 1e-4
 BATCH_SIZE            = 128
@@ -51,13 +50,9 @@ EARLY_STOP_PATIENCE   = 300
 DEGRADATION_THRESHOLD = 0.30
 DIVERGENCE_THRESHOLD  = 3.0
 
-# ── Leave-one-out map list ────────────────────────────────────────────────────
 HOLDOUT_MAPS = ["overtake", "porto", "berlin", "hangar", "f"]
 
 
-# =============================================================================
-# MODEL ARCHITECTURE  (5 → 64 → 64 → 32 → 1, reported in paper)
-# =============================================================================
 def build_model(activation='relu'):
     """
     Builds the V2 nn.Sequential model.
@@ -92,9 +87,6 @@ def build_model(activation='relu'):
     )
 
 
-# =============================================================================
-# TRAINING LOOP  (shared by both modes)
-# =============================================================================
 def train_model(model, X_train, y_train, X_val, y_val, label=''):
     """
     Trains model with V2 hyperparameters and three stopping conditions:
@@ -120,7 +112,6 @@ def train_model(model, X_train, y_train, X_val, y_val, label=''):
     train_history, val_history = [], []
 
     for epoch in range(EPOCHS):
-        # ── Train ──
         model.train()
         perm       = torch.randperm(X_train.size(0))
         epoch_loss = 0.0
@@ -134,7 +125,6 @@ def train_model(model, X_train, y_train, X_val, y_val, label=''):
             epoch_loss += loss.item() * len(idx)
         train_loss = epoch_loss / X_train.size(0)
 
-        # ── Validate ──
         model.eval()
         with torch.no_grad():
             val_loss = criterion(model(X_val), y_val).item()
@@ -151,7 +141,6 @@ def train_model(model, X_train, y_train, X_val, y_val, label=''):
         else:
             epochs_no_improve += 1
 
-        # ── Stopping conditions ──
         if epochs_no_improve >= EARLY_STOP_PATIENCE:
             stop_reason = f"Early stopping — no improvement for {EARLY_STOP_PATIENCE} epochs"
             print(f"\n  STOP: {stop_reason}")
@@ -181,10 +170,6 @@ def train_model(model, X_train, y_train, X_val, y_val, label=''):
     return train_history, val_history, best_val_loss, best_epoch, stop_reason
 
 
-# =============================================================================
-# MODE 1: ACTIVATION COMPARISON
-# Trains all 5 activations on the full multi-map dataset
-# =============================================================================
 def activation_comparison_mode():
     print("Loading full dataset:", f"{DATA_DIR}/method2V1V2_traintest_porto.csv")
     df = pd.read_csv(f"{DATA_DIR}/method2V1V2_traintest_porto.csv")
@@ -228,7 +213,6 @@ def activation_comparison_mode():
                           'rmse': np.sqrt(best_loss)}
         histories[act] = {'train': train_h, 'val': val_h}
 
-    # ── Comparison table ──
     best_act = min(results, key=lambda x: results[x]['best_val_loss'])
     print(f"\n{'='*80}\n  ACTIVATION COMPARISON\n{'='*80}")
     print(f"{'Activation':<15} {'Val Loss':>10} {'RMSE':>10} {'Best Ep':>10}  Stop Reason")
@@ -243,7 +227,6 @@ def activation_comparison_mode():
     print(f"  Model to use    : ml_model_{best_act}_best.pth")
     print(f"  Scaler to use   : scaler_holdout_porto.save")
 
-    # ── Training curves ──
     colors = {'relu': '#2196F3', 'leaky_relu': '#FF5722', 'elu': '#4CAF50',
               'tanh': '#9C27B0', 'selu': '#FF9800'}
     fig, axes = plt.subplots(2, 3, figsize=(18, 10))
@@ -305,10 +288,6 @@ def activation_comparison_mode():
     print("Plot saved.")
 
 
-# =============================================================================
-# MODE 2: LEAVE-ONE-MAP-OUT
-# Trains V2 ReLU model for each held-out map
-# =============================================================================
 def leave_one_out_mode(maps=None):
     if maps is None:
         maps = HOLDOUT_MAPS
@@ -361,9 +340,6 @@ def leave_one_out_mode(maps=None):
               f"MSE={r['val_mse']:.6f}  RMSE={r['rmse']:.4f}  {r['stop']}")
 
 
-# =============================================================================
-# ENTRY POINT
-# =============================================================================
 def main():
     parser = argparse.ArgumentParser(description='Train Our Method 2 V2')
     parser.add_argument('--mode', choices=['activation', 'leave_one_out'],
