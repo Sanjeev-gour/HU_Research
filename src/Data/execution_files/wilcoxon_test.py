@@ -1,6 +1,11 @@
+import os
 from scipy import stats
 import numpy as np
 import matplotlib.pyplot as plt
+
+OUT_PATH = os.path.expanduser(
+    '~/f110_ws/src/Data/plots&fig/wilcoxon_paired_test_final_portomap.png'
+)
 
 # =============================================================
 # YOUR RESULTS
@@ -261,14 +266,9 @@ ax.grid(True)
 
 plt.tight_layout()
 
-plt.savefig(
-    "wilcoxon_paired_test_final_portomap.png",
-    dpi=300,
-    bbox_inches='tight'
-)
+plt.savefig(OUT_PATH, dpi=300, bbox_inches='tight')
+print(f"Saved -> {OUT_PATH}")
 
 
 plt.show()
 
-print("\n✅ Figure saved as:")
-print("wilcoxon_paired_test_finl_portomap.png")

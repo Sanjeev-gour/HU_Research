@@ -1,13 +1,28 @@
+import os
+import shutil
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import LinearSegmentedColormap
+
+PLOTS_DIR = os.path.expanduser('~/f110_ws/src/Data/plots&fig')
+PAPER_DIR = os.path.expanduser('~/Desktop/paper/figures')
+os.makedirs(PLOTS_DIR, exist_ok=True)
+os.makedirs(PAPER_DIR, exist_ok=True)
+
+def save(name):
+    """Save current figure to both plots&fig/ and paper/figures/."""
+    p = os.path.join(PLOTS_DIR, name)
+    plt.savefig(p, dpi=220, bbox_inches='tight', facecolor='white')
+    shutil.copy(p, os.path.join(PAPER_DIR, name))
+    plt.close()
+    print(f"Saved {name}")
 
 # COLORS AND SHARED DATA
 MAP_C = '#1565C0'   # blue  - MAP controller
 ML_C  = '#E65100'   # orange - Our Method
 
-maps_short = ['Overtake', 'Porto\n(Unseen)', 'Hangar', 'Berlin', 'F Map']
-maps_plain = ['Overtake', 'Porto',           'Hangar', 'Berlin', 'F Map']
+maps_short = ['Overtake', 'Porto', 'Hangar', 'Berlin', 'F Map']
+maps_plain = ['Overtake', 'Porto', 'Hangar', 'Berlin', 'F Map']
 speeds     = ['0.60', '0.825', '0.90', '0.92', '0.95', '0.97', '1.00']
 
 cmap = LinearSegmentedColormap.from_list('rc',
@@ -15,6 +30,8 @@ cmap = LinearSegmentedColormap.from_list('rc',
 
 # Completion rates (%) per map per speed
 # Rows = maps, Cols = speeds [0.60, 0.825, 0.90, 0.92, 0.95, 0.97, 1.00]
+# MAP is unchanged across folds (it never trains, so its numbers are
+# identical regardless of which map is held out).
 map_comp = [
     [100, 100, 100, 100, 20.5, 0.5,  0],    # Overtake
     [100, 100, 100, 16.5, 5.0, 0,    0],    # Porto
@@ -22,21 +39,26 @@ map_comp = [
     [100, 71.5, 5,  7.5,  6.5, 0.5,  0],   # Berlin
     [100, 1.5,  0,  0,    0,   0,    0],    # F Map
 ]
+# Our Method — leave-one-map-out cross-validation (each map held out
+# entirely from training, evaluated as the unseen test map). Source:
+# Table tab:robustness_full (updated with the 5-fold generalization run).
 ml_comp = [
-    [100, 100, 100, 100,  6.0, 0,    0],    # Overtake
-    [100, 100, 100, 100, 100, 100,  100],   # Porto
-    [100, 100, 100, 100, 100, 100,  100],   # Hangar
-    [100, 100, 35.5, 21.5, 33, 28.5, 64],  # Berlin
-    [12.5, 100, 9.5, 2,  4.5,  0,    0],   # F Map
+    [100, 100, 3.0,  2.0,  0.5,  0,    0],    # Overtake (unseen)
+    [100, 100, 100,  100,  100,  100,  100],  # Porto (unseen)
+    [100, 100, 100,  100,  100,  100,  100],  # Hangar (unseen)
+    [100, 100, 12.5, 10.5, 35.5, 32.5, 45.5], # Berlin (unseen)
+    [0,   11.0, 20.0, 18.5, 1.0,  2.5,  1.0], # F Map (unseen)
 ]
 
 # Lateral error at 0.825 per map
 map_le = [0.069, 0.060, 0.071, 0.308, 0.298]
-ml_le  = [0.074, 0.067, 0.091, 0.239, 0.237]
+ml_le  = [0.184, 0.067, 0.094, 0.178, 0.179]
 
-# Max stable velocity scale per map
+# Max stable velocity scale per map (highest speed with 100% completion).
+# F Map (Ours) never reaches 100% completion at any tested speed under
+# genuine leave-one-out evaluation -- represented as None (no stable speed).
 map_limit = [0.92, 0.90, 0.92, 0.825, 0.60]
-ml_limit  = [0.90, 1.00, 1.00, 0.825, 0.825]
+ml_limit  = [0.825, 1.00, 1.00, 0.825, None]
 
 # V1 per-run data on Porto at 0.825 (10 runs)
 runs     = list(range(1, 11))
@@ -82,10 +104,7 @@ fig.suptitle(
     'Porto Map (Unseen) — MAP vs Our Method 2 (V1) — Velocity Scale 0.825',
     fontsize=13, fontweight='bold')
 plt.tight_layout()
-plt.savefig('fig4_generalization.png',
-            dpi=220, bbox_inches='tight', facecolor='white')
-plt.close()
-print("Figure 4 (fig4_generalization.png) saved")
+save('fig5_generalization.png')
 
 
 # FIGURE 5 — MAP Heatmap
@@ -108,10 +127,7 @@ for i in range(len(maps_short)):
                 fontsize=11, fontweight='bold', color=c)
 plt.colorbar(im, ax=ax, shrink=0.9, label='Completion %')
 plt.tight_layout()
-plt.savefig('fig5_map_heatmap.png',
-            dpi=220, bbox_inches='tight', facecolor='white')
-plt.close()
-print("Figure 5 (fig5_map_heatmap.png) saved")
+save('fig6_map_heatmap.png')
 
 
 # FIGURE 6 — ML Heatmap 
@@ -123,7 +139,7 @@ ax.set_xticks(range(len(speeds)))
 ax.set_xticklabels(speeds, fontsize=13)
 ax.set_yticks(range(len(maps_short)))
 ax.set_yticklabels(maps_short, fontsize=13, fontweight='bold')
-ax.set_title('Our Method — Lap Completion Rate (%)',
+ax.set_title('Our Method — Lap Completion Rate (%)\n(Leave-One-Map-Out: each map withheld entirely from training)',
              fontsize=14, fontweight='bold', pad=12)
 ax.set_xlabel('Velocity Scale', fontsize=12)
 for i in range(len(maps_short)):
@@ -134,10 +150,7 @@ for i in range(len(maps_short)):
                 fontsize=11, fontweight='bold', color=c)
 plt.colorbar(im, ax=ax, shrink=0.9, label='Completion %')
 plt.tight_layout()
-plt.savefig('fig6_ml_heatmap.png',
-            dpi=220, bbox_inches='tight', facecolor='white')
-plt.close()
-print("Figure 6 (fig6_ml_heatmap.png) saved")
+save('fig7_ml_heatmap.png')
 
 
 # FIGURE 7 — Lateral Error at 0.825
@@ -148,7 +161,7 @@ fig, ax = plt.subplots(figsize=(12, 6))
 fig.patch.set_facecolor('white')
 b1 = ax.bar(x-w/2, map_le, w, label='MAP',
             color=MAP_C, edgecolor='black', alpha=0.85)
-b2 = ax.bar(x+w/2, ml_le,  w, label='Our Method 2 (V2)',
+b2 = ax.bar(x+w/2, ml_le,  w, label='Our Method (Leave-One-Out)',
             color=ML_C,  edgecolor='black', alpha=0.85)
 for bar, val in zip(b1, map_le):
     ax.text(bar.get_x()+bar.get_width()/2,
@@ -162,31 +175,41 @@ for bar, val in zip(b2, ml_le):
             fontweight='bold', color=ML_C)
 ax.set_xticks(x)
 ax.set_xticklabels(maps_plain, fontsize=13)
-ax.set_title('Average Lateral Error at Velocity Scale 0.825',
+ax.set_title('Average Lateral Error at Velocity Scale 0.825\n(Leave-One-Map-Out: each map withheld entirely from training)',
              fontsize=14, fontweight='bold', pad=12)
 ax.set_ylabel('Lateral Error (m)', fontsize=12)
 ax.legend(fontsize=12)
 ax.grid(True, alpha=0.3, axis='y')
 plt.tight_layout()
-plt.savefig('fig7_lateral_error.png',
-            dpi=220, bbox_inches='tight', facecolor='white')
-plt.close()
-print("Figure 7 (fig7_lateral_error.png) saved")
+save('fig8_lateral_error.png')
 
 
 # FIGURE 8 — Stability Limits
+# ml_limit may contain None where Our Method never reaches 100%
+# completion at any tested speed (e.g. F Map under leave-one-out
+# evaluation) -- plotted as a zero-height bar with an explicit
+# "no stable speed" annotation rather than a numeric value.
+ml_limit_plot = [v if v is not None else 0.50 for v in ml_limit]
+
 fig, ax = plt.subplots(figsize=(12, 6))
 fig.patch.set_facecolor('white')
 b3 = ax.bar(x-w/2, map_limit, w, label='MAP',
             color=MAP_C, edgecolor='black', alpha=0.85)
-b4 = ax.bar(x+w/2, ml_limit,  w, label='Our Method 2 (V2)',
-            color=ML_C,  edgecolor='black', alpha=0.85)
+b4 = ax.bar(x+w/2, ml_limit_plot, w, label='Our Method (Leave-One-Out)',
+            color=ML_C,  edgecolor='black', alpha=0.85,
+            hatch=['' if v is not None else '////' for v in ml_limit])
 for bar, val in zip(b3, map_limit):
     ax.text(bar.get_x()+bar.get_width()/2,
             bar.get_height()+0.008, f'{val}',
             ha='center', va='bottom', fontsize=11,
             fontweight='bold', color=MAP_C)
 for bar, val, mv in zip(b4, ml_limit, map_limit):
+    if val is None:
+        ax.text(bar.get_x()+bar.get_width()/2,
+                bar.get_height()+0.008, 'no stable\nspeed',
+                ha='center', va='bottom', fontsize=9,
+                fontweight='bold', color='#B71C1C')
+        continue
     ax.text(bar.get_x()+bar.get_width()/2,
             bar.get_height()+0.008, f'{val}',
             ha='center', va='bottom', fontsize=11,
@@ -201,7 +224,7 @@ for bar, val, mv in zip(b4, ml_limit, map_limit):
                               edgecolor='#2E7D32', lw=1.2))
 ax.set_xticks(x)
 ax.set_xticklabels(maps_plain, fontsize=13)
-ax.set_title('Maximum Stable Velocity Scale by Map',
+ax.set_title('Maximum Stable Velocity Scale by Map\n(Leave-One-Map-Out: each map withheld entirely from training)',
              fontsize=14, fontweight='bold', pad=12)
 ax.set_ylabel('Max Stable Velocity Scale', fontsize=12)
 ax.set_ylim(0.50, 1.20)
@@ -210,7 +233,4 @@ ax.axhline(y=1.0, color='green', lw=2,
 ax.legend(fontsize=12)
 ax.grid(True, alpha=0.3, axis='y')
 plt.tight_layout()
-plt.savefig('fig8_stability_limits.png',
-            dpi=220, bbox_inches='tight', facecolor='white')
-plt.close()
-print("Figure 8 (fig8_stability_limits.png) saved")
+save('fig9_stability_limits.png')
