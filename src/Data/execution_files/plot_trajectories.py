@@ -3,7 +3,7 @@
 plot_trajectories.py — generates two paper figures:
 
     fig4_maps.png          racetrack layout overview (all 5 maps)
-    fig10_trajectories.png MAP vs NN trajectory comparison (all 5 maps)
+    fig8_trajectories.png MAP vs NN trajectory comparison (all 5 maps)
 
 Requires in bag_files/:
     run_<map>_0.825.bag    MAP controller closed-loop run
@@ -15,6 +15,7 @@ Usage:
 """
 
 import os
+import shutil
 import numpy as np
 import yaml
 import rosbag
@@ -22,11 +23,13 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from PIL import Image
 
+PAPER_DIR = os.path.expanduser('~/Desktop/paper/figures')
+
 BAG_DIR = os.path.expanduser('~/f110_ws/src/Data/bag_files')
 MAP_DIR = os.path.expanduser('~/f110_ws/src/F110_ROS_Simulator/maps')
 OUT_DIR = os.path.expanduser('~/f110_ws/src/Data/plots&fig')
 OUT_FIG4  = os.path.join(OUT_DIR, 'fig4_maps.png')
-OUT_FIG10 = os.path.join(OUT_DIR, 'fig10_trajectories.png')
+OUT_FIG8  = os.path.join(OUT_DIR, 'fig8_trajectories.png')
 
 MAP_C = '#1565C0'   # blue  — MAP controller
 NN_C  = '#E65100'   # orange — NN controller
@@ -37,13 +40,13 @@ SKIP = 80  # messages to drop at bag start (avoids launch transients)
 MAPS = [
     dict(label='Overtake', map_dir='overtake_map', map_file='overtake_map',
          map_bag='run_overtakemap_0.825.bag', nn_bag='nn_overtake_map_0.825.bag',
-         n_pts=None, one_lap=False),
+         n_pts=None, one_lap=True),
     dict(label='Porto',    map_dir='porto',        map_file='porto',
          map_bag='run_porto_0.825.bag',       nn_bag='nn_porto_0.825.bag',
-         n_pts=None, one_lap=False),
+         n_pts=None, one_lap=True),
     dict(label='Hangar',   map_dir='hangar',       map_file='hangar',
          map_bag='run_hangar_0.825.bag',      nn_bag='nn_hangar_0.825.bag',
-         n_pts=None, one_lap=False),
+         n_pts=None, one_lap=True),
     dict(label='Berlin',   map_dir='berlin',       map_file='berlin',
          map_bag='run_berlin_0.825.bag',      nn_bag='nn_berlin_0.825.bag',
          n_pts=None, one_lap=True),
@@ -105,27 +108,40 @@ def crop_bounds(img, pad=20):
 
 def plot_maps():
     """Fig 4 — racetrack layout overview."""
-    fig, axes = plt.subplots(1, 5, figsize=(18, 4.5), facecolor='white')
-    fig.suptitle('Racetracks Used in This Study', fontsize=14, fontweight='bold', y=1.01)
+    fig, axes = plt.subplots(1, 5, figsize=(18, 5), facecolor='white')
+    plt.subplots_adjust(left=0.02, right=0.98, top=0.95, bottom=0.12, wspace=0.08)
 
     for ax, cfg in zip(axes, MAPS):
         img_path = os.path.join(MAP_DIR, cfg['map_dir'], cfg['map_file'] + '.png')
-        img = np.array(Image.open(img_path).convert('L'))
-        r0, r1, c0, c1 = crop_bounds(img)
-        ax.imshow(img[r0:r1, c0:c1], cmap='gray_r', origin='upper', aspect='equal')
-        ax.set_title(cfg['label'], fontsize=12, fontweight='bold', pad=6)
+        img_orig = np.array(Image.open(img_path).convert('L'))
+        r0, r1, c0, c1 = crop_bounds(img_orig)
+        img = 255 - img_orig  # invert: dark track on white background (matches fig11)
+        ax.imshow(img[r0:r1, c0:c1], cmap='gray', vmin=0, vmax=255,
+                  origin='upper', aspect='equal', alpha=0.35)
+        ax.set_facecolor('white')
         ax.axis('off')
 
-    plt.tight_layout(pad=0.5)
+    # Draw labels at a fixed y position in figure coordinates so all names
+    # sit on the same horizontal line regardless of each subplot's aspect ratio.
+    fig.canvas.draw()
+    for ax, cfg in zip(axes, MAPS):
+        bb = ax.get_position()
+        cx = (bb.x0 + bb.x1) / 2
+        fig.text(cx, 0.04, cfg['label'], ha='center', va='center',
+                 fontsize=18, fontweight='bold', transform=fig.transFigure)
+
     os.makedirs(OUT_DIR, exist_ok=True)
+    os.makedirs(PAPER_DIR, exist_ok=True)
     plt.savefig(OUT_FIG4, dpi=200, bbox_inches='tight', facecolor='white')
+    shutil.copy(OUT_FIG4, os.path.join(PAPER_DIR, 'fig4_maps.png'))
     plt.close()
     print(f"Saved -> {OUT_FIG4}")
 
 
 def plot_trajectories():
-    """Fig 10 — MAP vs NN trajectory comparison overlaid on track maps."""
+    """Fig 8 — MAP vs NN trajectory comparison overlaid on track maps."""
     fig, axes = plt.subplots(1, 5, figsize=(18, 5.5), facecolor='white')
+    plt.subplots_adjust(left=0.02, right=0.98, top=0.95, bottom=0.20, wspace=0.08)
 
     for ax, cfg in zip(axes, MAPS):
         print(f"  {cfg['label']} ...", flush=True)
@@ -163,15 +179,22 @@ def plot_trajectories():
 
         ax.imshow(img[r0:r1, c0:c1], cmap='gray', vmin=0, vmax=255,
                   origin='upper', aspect='equal', alpha=0.35)
-        ax.plot(rl_px  - c0, rl_py  - r0, '-', color=RL_C,  lw=1.2, alpha=0.7,  zorder=2)
-        ax.plot(map_px - c0, map_py - r0, '-', color=MAP_C, lw=1.8, alpha=0.85, zorder=3)
-        ax.plot(nn_px  - c0, nn_py  - r0, '-', color=NN_C,  lw=1.8, alpha=0.85, zorder=4)
+        ax.plot(rl_px  - c0, rl_py  - r0, '-', color=RL_C,  lw=2.0, alpha=0.90, zorder=2)
+        ax.plot(map_px - c0, map_py - r0, '-', color=MAP_C, lw=2.0, alpha=0.70, zorder=3)
+        ax.plot(nn_px  - c0, nn_py  - r0, '-', color=NN_C,  lw=2.0, alpha=0.55, zorder=4)
 
         ax.set_xlim(0, c1 - c0)
         ax.set_ylim(r1 - r0, 0)
         ax.set_aspect('equal')
         ax.axis('off')
-        ax.set_title(cfg['label'], fontsize=12, fontweight='bold', pad=6)
+
+    # Place map labels below each subplot on a single consistent horizontal line
+    fig.canvas.draw()
+    for ax, cfg in zip(axes, MAPS):
+        bb = ax.get_position()
+        cx = (bb.x0 + bb.x1) / 2
+        fig.text(cx, 0.10, cfg['label'], ha='center', va='center',
+                 fontsize=18, fontweight='bold', transform=fig.transFigure)
 
     handles = [
         mpatches.Patch(color=RL_C,  label='Racing line (reference)'),
@@ -179,14 +202,12 @@ def plot_trajectories():
         plt.Line2D([0], [0], color=NN_C,  lw=2.5, label='Our Method (NN)'),
     ]
     fig.legend(handles=handles, loc='lower center', ncol=3, fontsize=11,
-               frameon=True, bbox_to_anchor=(0.5, -0.02), framealpha=0.95, edgecolor='#cccccc')
-    fig.suptitle('Trajectories at Velocity Scale 0.825 — All Five Racetracks',
-                 fontsize=14, fontweight='bold', y=1.02)
+               frameon=True, bbox_to_anchor=(0.5, -0.01), framealpha=0.95, edgecolor='#cccccc')
 
-    plt.tight_layout(pad=0.8, w_pad=0.8)
-    plt.savefig(OUT_FIG10, dpi=200, bbox_inches='tight', facecolor='white')
+    plt.savefig(OUT_FIG8, dpi=200, bbox_inches='tight', facecolor='white')
+    shutil.copy(OUT_FIG8, os.path.join(PAPER_DIR, 'fig8_trajectories.png'))
     plt.close()
-    print(f"Saved -> {OUT_FIG10}")
+    print(f"Saved -> {OUT_FIG8}")
 
 
 if __name__ == '__main__':

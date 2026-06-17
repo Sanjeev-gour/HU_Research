@@ -102,11 +102,12 @@ ax.set_xlabel('Velocity Scale', fontsize=12)
 for i in range(len(maps_plain)):
     for j in range(len(speeds)):
         val = data[i, j]
+        txt_color = 'white' if (val < 30 or val > 75) else 'black'
         ax.text(j, i, f'{val:.0f}%', ha='center', va='center',
-                fontsize=11, fontweight='bold', color='white' if val < 30 else 'black')
+                fontsize=11, fontweight='bold', color=txt_color)
 plt.colorbar(im, ax=ax, shrink=0.9, label='Completion %')
 plt.tight_layout()
-save('fig6_map_heatmap.png')
+save('fig5_map_heatmap.png')
 
 
 # Fig 7 — Our Method completion heatmap
@@ -124,11 +125,12 @@ ax.set_xlabel('Velocity Scale', fontsize=12)
 for i in range(len(maps_plain)):
     for j in range(len(speeds)):
         val = data[i, j]
+        txt_color = 'white' if (val < 30 or val > 75) else 'black'
         ax.text(j, i, f'{val:.0f}%', ha='center', va='center',
-                fontsize=11, fontweight='bold', color='white' if val < 30 else 'black')
+                fontsize=11, fontweight='bold', color=txt_color)
 plt.colorbar(im, ax=ax, shrink=0.9, label='Completion %')
 plt.tight_layout()
-save('fig7_ml_heatmap.png')
+save('fig6_ml_heatmap.png')
 
 
 # Fig 8 — lateral error bar chart at 0.825
@@ -141,10 +143,10 @@ b1 = ax.bar(x - w/2, map_le, w, label='MAP',                       color=MAP_C, 
 b2 = ax.bar(x + w/2, ml_le,  w, label='Our Method (Leave-One-Out)', color=ML_C,  edgecolor='black', alpha=0.85)
 for bar, val in zip(b1, map_le):
     ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.003,
-            f'{val:.3f}m', ha='center', va='bottom', fontsize=10, fontweight='bold', color=MAP_C)
+            f'{val:.3f}m', ha='center', va='bottom', fontsize=12, fontweight='bold', color=MAP_C)
 for bar, val in zip(b2, ml_le):
     ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.003,
-            f'{val:.3f}m', ha='center', va='bottom', fontsize=10, fontweight='bold', color=ML_C)
+            f'{val:.3f}m', ha='center', va='bottom', fontsize=12, fontweight='bold', color=ML_C)
 ax.set_xticks(x)
 ax.set_xticklabels(maps_plain, fontsize=13)
 ax.set_title('Average Lateral Error at Velocity Scale 0.825\n(Leave-One-Map-Out: each map withheld entirely from training)',
@@ -153,7 +155,7 @@ ax.set_ylabel('Lateral Error (m)', fontsize=12)
 ax.legend(fontsize=12)
 ax.grid(True, alpha=0.3, axis='y')
 plt.tight_layout()
-save('fig8_lateral_error.png')
+save('fig7_lateral_error.png')
 
 
 # Fig 9 — max stable speed bar chart
@@ -180,9 +182,7 @@ for bar, val, mv in zip(b4, ml_limit, map_limit):
                     bbox=dict(boxstyle='round,pad=0.2', facecolor='#E8F5E9',
                               edgecolor='#2E7D32', lw=1.2))
 ax.set_xticks(x)
-ax.set_xticklabels(maps_plain, fontsize=13)
-ax.set_title('Maximum Stable Velocity Scale by Map\n(Leave-One-Map-Out: each map withheld entirely from training)',
-             fontsize=14, fontweight='bold', pad=12)
+ax.set_xticklabels(maps_plain, fontsize=14, fontweight='bold')
 ax.set_ylabel('Max Stable Velocity Scale', fontsize=12)
 ax.set_ylim(0.50, 1.20)
 ax.axhline(y=1.0, color='green', lw=2, linestyle='--', alpha=0.4, label='Scale 1.0')
