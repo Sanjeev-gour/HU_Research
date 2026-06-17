@@ -43,7 +43,7 @@ class ClassicalMLController:
         # LOAD SCALER
         # =============================================================
 
-        scaler_path = "/home/sanjeev/f110_ws/src/ML_controller/scaler_generalized.save"
+        scaler_path = "/home/sanjeev/f110_ws/src/ML_controller/scaler_holdout_porto.save"
 
         self.scaler = joblib.load(scaler_path)
 
@@ -414,7 +414,7 @@ if __name__ == "__main__":
 #         # LOAD GENERALIZED SCALER
 #         # =====================================================
 
-#         scaler_path = "/home/sanjeev/f110_ws/src/ML_controller/scaler_generalized.save"
+#         scaler_path = "/home/sanjeev/f110_ws/src/ML_controller/scaler_holdout_porto.save"
 
 #         self.scaler = joblib.load(scaler_path)
 

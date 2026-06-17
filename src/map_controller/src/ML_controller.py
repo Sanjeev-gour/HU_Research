@@ -45,7 +45,7 @@ class MLController:
         # =============================================================
         # LOAD MODEL
         # =============================================================
-        model_path = "/home/sanjeev/f110_ws/src/ML_controller/models_path/ml_model_relu_best.pth"
+        model_path = "/home/sanjeev/f110_ws/src/ML_controller/models_path/model_method2V2_holdout_overtake.pth"
 
         self.model.load_state_dict(torch.load(model_path))
 
@@ -55,7 +55,7 @@ class MLController:
         # =============================================================
         # LOAD SCALER
         # =============================================================
-        scaler_path = "/home/sanjeev/f110_ws/src/ML_controller/scaler_generalized.save"
+        scaler_path = "/home/sanjeev/f110_ws/src/ML_controller/scaler_holdout_overtake.save"
         self.scaler = joblib.load(scaler_path)
 
         rospy.loginfo("✅ Generalized Model + Scaler Loaded")

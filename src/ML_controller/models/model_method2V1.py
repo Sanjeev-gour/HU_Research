@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 # Previously: single map data (training_data_overtake.csv)
 # Now: all 4 maps x 2 velocity profiles = 79k clean samples
 # =============================================================
-df = pd.read_csv("/home/sanjeev/f110_ws/src/Data/data_files/method2V1V2_final_clean.csv")
+df = pd.read_csv("/home/sanjeev/f110_ws/src/Data/data_files/method2V1V2_traintest_porto.csv")
 print(f"✅ Loaded dataset | Rows: {len(df)}")
 
 # =============================================================
@@ -36,8 +36,8 @@ print(f"   y shape : {y.shape}")
 # =============================================================
 scaler = StandardScaler()
 X = scaler.fit_transform(X)
-joblib.dump(scaler, "scaler_generalized.save")
-print(f"✅ Scaler fitted and saved as scaler_generalized.save")
+joblib.dump(scaler, "scaler_holdout_porto.save")
+print(f"✅ Scaler fitted and saved as scaler_holdout_porto.save")
 
 # =============================================================
 # STEP 4: TRAIN / VALIDATION SPLIT

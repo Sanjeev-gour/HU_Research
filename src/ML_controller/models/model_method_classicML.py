@@ -20,7 +20,7 @@ from xgboost                   import XGBRegressor
 # =============================================================
 # STEP 1: LOAD DATA
 # =============================================================
-df = pd.read_csv("/home/sanjeev/f110_ws/src/Data/data_files/method2V1V2_final_clean.csv")
+df = pd.read_csv("/home/sanjeev/f110_ws/src/Data/data_files/method2V1V2_traintest_porto.csv")
 print(f"✅ Loaded | Rows: {len(df)}")
 
 X = df[["d_m", "heading_error", "kappa", "vx", "kappa_lookahead"]].values
