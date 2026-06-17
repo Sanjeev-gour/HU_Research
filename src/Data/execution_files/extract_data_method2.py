@@ -1,145 +1,153 @@
 #!/usr/bin/env python3
+"""
+extract_data_method2.py  —  Method 2 Full Data Pipeline
 
-import rosbag
+For each map, reads the 0.6 and 0.825 rosbags, extracts the 5
+physics-informed features + steering label, applies the 8-step
+cleaning pipeline, and saves the leave-one-map-out training split:
+
+    method2V1V2_traintest_<map>.csv  (other 4 maps, both speeds, cleaned)
+
+Usage:
+    python3 extract_data_method2.py              # all 5 holdout splits
+    python3 extract_data_method2.py --map porto  # single split only
+"""
+
+import argparse
+import os
 import numpy as np
 import pandas as pd
 from scipy.spatial import KDTree
-from tf.transformations import euler_from_quaternion
 
-# ===== CONFIG =====
-BAG_PATH = "run_porto_0.825.bag"
-LOOKAHEAD = 10   # number of waypoints ahead
+BAG_DIR  = "/home/sanjeev/f110_ws/src/Data/bag_files"
+DATA_DIR = "/home/sanjeev/f110_ws/src/Data/data_files"
 
-# ===== LOAD BAG =====
-bag = rosbag.Bag(BAG_PATH)
+MAPS      = ["overtake_map", "berlin", "hangar", "f", "porto"]
+SPEEDS    = ["0.6", "0.825"]
+LOOKAHEAD   = 10
+RANDOM_SEED = 42
 
-# ===== STORAGE =====
-waypoints = []
-odom_data = []
-pose_data = []
-control_data = []
+# Bag filenames don't always match the map name exactly
+BAG_PREFIX = {
+    "overtake_map": "overtakemap",  # actual files: run_overtakemap_*.bag
+}
 
-# ===== READ BAG =====
-for topic, msg, t in bag.read_messages():
 
-    # ===== WAYPOINTS =====
-    if topic == "/global_waypoints":
-        for wp in msg.wpnts:
-            waypoints.append([
-                wp.x_m,
-                wp.y_m,
-                wp.psi_rad,
-                wp.kappa_radpm,
-                wp.vx_mps
-            ])
+def extract_bag(map_name, speed):
+    """Read one rosbag and return a raw feature DataFrame, or None if missing."""
+    import rosbag
+    from tf.transformations import euler_from_quaternion
 
-    # ===== ODOM =====
-    elif topic == "/car_state/odom":
-        odom_data.append([
-            t.to_sec(),
-            msg.pose.pose.position.x,
-            msg.pose.pose.position.y,
-            msg.twist.twist.linear.x
-        ])
+    stem = BAG_PREFIX.get(map_name, map_name)
+    bag_path = os.path.join(BAG_DIR, f"run_{stem}_{speed}.bag")
+    if not os.path.exists(bag_path):
+        print(f"    missing: run_{stem}_{speed}.bag — skipped")
+        return None
 
-    # ===== POSE =====
-    elif topic == "/car_state/pose":
-        quat = msg.pose.orientation
-        yaw = euler_from_quaternion([
-            quat.x, quat.y, quat.z, quat.w
-        ])[2]
+    print(f"    extracting run_{stem}_{speed}.bag ...", flush=True)
+    bag = rosbag.Bag(bag_path)
 
-        pose_data.append([
-            t.to_sec(),
-            yaw
-        ])
+    waypoints, odom_data, pose_data, control_data = [], [], [], []
 
-    # ===== CONTROL =====
-    elif topic == "/vesc/high_level/ackermann_cmd_mux/input/nav_1":
-        control_data.append([
-            t.to_sec(),
-            msg.drive.steering_angle
-        ])
+    for topic, msg, t in bag.read_messages():
+        if topic == "/global_waypoints":
+            for wp in msg.wpnts:
+                waypoints.append([wp.x_m, wp.y_m, wp.psi_rad, wp.kappa_radpm, wp.vx_mps])
+        elif topic == "/car_state/odom":
+            odom_data.append([t.to_sec(),
+                               msg.pose.pose.position.x,
+                               msg.pose.pose.position.y,
+                               msg.twist.twist.linear.x])
+        elif topic == "/car_state/pose":
+            q = msg.pose.orientation
+            yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])[2]
+            pose_data.append([t.to_sec(), yaw])
+        elif topic == "/vesc/high_level/ackermann_cmd_mux/input/nav_1":
+            control_data.append([t.to_sec(), msg.drive.steering_angle])
 
-bag.close()
+    bag.close()
 
-# ===== CONVERT TO NUMPY =====
-waypoints = np.array(waypoints)
-odom_data = np.array(odom_data)
-pose_data = np.array(pose_data)
-control_data = np.array(control_data)
+    waypoints    = np.array(waypoints)
+    odom_data    = np.array(odom_data)
+    pose_data    = np.array(pose_data)
+    control_data = np.array(control_data)
+    tree = KDTree(waypoints[:, :2])
 
-print("Waypoints:", waypoints.shape)
-print("Odom:", odom_data.shape)
+    def nearest(data, t):
+        return data[np.argmin(np.abs(data[:, 0] - t))]
 
-# ===== KD-TREE FOR FAST NEAREST SEARCH =====
-tree = KDTree(waypoints[:, :2])
+    rows = []
+    for odom in odom_data:
+        t, x, y, vx = odom
+        _, yaw      = nearest(pose_data, t)
+        _, steering = nearest(control_data, t)
 
-# ===== HELPER: FIND NEAREST BY TIME =====
-def find_nearest(data, t):
-    idx = np.argmin(np.abs(data[:, 0] - t))
-    return data[idx]
+        _, idx = tree.query([x, y])
+        wp_x, wp_y, wp_yaw, kappa, _ = waypoints[idx]
 
-# ===== FEATURE EXTRACTION =====
-dataset = []
+        dx, dy = x - wp_x, y - wp_y
+        # cross product gives left(+)/right(-) sign for d_m
+        d_m = np.sign(np.cross([np.cos(wp_yaw), np.sin(wp_yaw)], [dx, dy])) * np.hypot(dx, dy)
+        heading_error = np.arctan2(np.sin(yaw - wp_yaw), np.cos(yaw - wp_yaw))
+        kappa_la = waypoints[min(idx + LOOKAHEAD, len(waypoints) - 1), 3]
 
-for odom in odom_data:
+        rows.append([d_m, heading_error, kappa, vx, kappa_la, steering])
 
-    t, x, y, vx = odom
+    df = pd.DataFrame(rows, columns=["d_m", "heading_error", "kappa", "vx", "kappa_lookahead", "steering"])
+    print(f"      {len(df)} rows")
+    return df
 
-    # ===== MATCH POSE =====
-    _, yaw = find_nearest(pose_data, t)
 
-    # ===== MATCH CONTROL =====
-    _, steering = find_nearest(control_data, t)
+def clean(df):
+    """8-step cleaning pipeline — removes noise, saturation artifacts, outliers."""
+    n0 = len(df)
+    df = df.dropna()
+    df = df[df["vx"] > 0.5]                      # remove stationary data
+    df = df[df["kappa"].abs() < 0.99]             # remove kappa saturation artifacts
+    df = df[df["kappa_lookahead"].abs() < 0.99]
+    df = df[df["d_m"].abs() < 0.5]               # remove large off-track deviations
+    Q1, Q3 = df["heading_error"].quantile([0.25, 0.75])
+    df = df[(df["heading_error"] >= Q1 - 1.5*(Q3-Q1)) &
+            (df["heading_error"] <= Q3 + 1.5*(Q3-Q1))]
+    df = df[df["steering"].abs() < 0.39]          # remove saturated steering commands
+    df = df[df["vx"] <= 8.0]
+    df = df.drop_duplicates().reset_index(drop=True)
+    print(f"    cleaned: {n0} -> {len(df)} rows")
+    return df
 
-    # ===== NEAREST WAYPOINT =====
-    dist, idx = tree.query([x, y])
 
-    wp = waypoints[idx]
+def build_split(test_map, all_maps):
+    """Extract, merge, clean, and save the training CSV for one holdout map."""
+    train_maps = [m for m in all_maps if m != test_map]
+    short = test_map.replace("_map", "")  # overtake_map -> overtake
 
-    wp_x, wp_y, wp_yaw, kappa, wp_vx = wp
+    print(f"\nHeld-out: {test_map}  |  Training: {train_maps}")
 
-    # ===== d_m =====
-    dx = x - wp_x
-    dy = y - wp_y
-    d_m = np.sqrt(dx**2 + dy**2)
+    frames = []
+    for m in train_maps:
+        for s in SPEEDS:
+            df = extract_bag(m, s)
+            if df is not None:
+                frames.append(df)
 
-    # ===== SIGN OF d_m (LEFT/RIGHT) =====
-    heading_vec = np.array([np.cos(wp_yaw), np.sin(wp_yaw)])
-    error_vec = np.array([dx, dy])
-    cross = np.cross(heading_vec, error_vec)
-    d_m = np.sign(cross) * d_m
+    merged  = pd.concat(frames, ignore_index=True).sample(frac=1, random_state=RANDOM_SEED).reset_index(drop=True)
+    cleaned = clean(merged)
 
-    # ===== HEADING ERROR =====
-    heading_error = yaw - wp_yaw
-    heading_error = np.arctan2(np.sin(heading_error), np.cos(heading_error))
+    out = os.path.join(DATA_DIR, f"method2V1V2_traintest_{short}.csv")
+    cleaned.to_csv(out, index=False)
+    print(f"  Saved -> {out}  ({len(cleaned)} rows)")
 
-    # ===== LOOKAHEAD KAPPA =====
-    idx_la = min(idx + LOOKAHEAD, len(waypoints) - 1)
-    kappa_la = waypoints[idx_la][3]
 
-    # ===== STORE =====
-    dataset.append([
-        d_m,
-        heading_error,
-        kappa,
-        vx,
-        kappa_la,
-        steering
-    ])
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--map', default=None, help='single holdout map (e.g. porto)')
+    args = parser.parse_args()
 
-# ===== SAVE CSV =====
-df = pd.DataFrame(dataset, columns=[
-    "d_m",
-    "heading_error",
-    "kappa",
-    "vx",
-    "kappa_lookahead",
-    "steering"
-])
+    for test_map in ([args.map] if args.map else MAPS):
+        build_split(test_map, MAPS)
 
-df.to_csv("training_data_porto_0.825.csv", index=False)
+    print("\nDone.")
 
-print("✅ Dataset saved as training_data_porto_0.825.csv")
-print("Total samples:", len(df))
+
+if __name__ == '__main__':
+    main()

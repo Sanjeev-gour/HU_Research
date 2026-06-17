@@ -1,14 +1,13 @@
+import os
 from scipy import stats
 import numpy as np
 import matplotlib.pyplot as plt
 
-# =============================================================
-# YOUR RESULTS
-# =============================================================
+OUT_PATH = os.path.expanduser(
+    '~/f110_ws/src/Data/plots&fig/wilcoxon_paired_test_final_portomap.png'
+)
 
-# Unseen Map results (velocity_scale = 0.825)
-
-# MAP Controller - Porto Map - Velocity Scale 0.825 - 20 Laps
+# Porto map, velocity scale 0.825, 20 laps each
 map_lateral_errors = [
     0.059, 0.061, 0.063, 0.062, 0.062,
     0.059, 0.060, 0.060, 0.060, 0.059,
@@ -23,7 +22,6 @@ map_lap_times = [
     6.525, 6.550, 6.550, 6.550, 6.550
 ]
 
-# ML Controller (Our Method 2 V2) - Porto Map - Velocity Scale 0.825 - 20 Laps
 ml_lateral_errors = [
     0.061, 0.071, 0.070, 0.072, 0.070,
     0.069, 0.071, 0.072, 0.070, 0.069,
@@ -38,237 +36,73 @@ ml_lap_times = [
     6.575, 6.575, 6.575, 6.550, 6.550
 ]
 
-# =============================================================
-# WILCOXON SIGNED-RANK TEST
-# =============================================================
-
-# Lateral Error
-stat_error, p_error = stats.wilcoxon(
-    map_lateral_errors,
-    ml_lateral_errors,
-    alternative='two-sided'
-)
-
-# Lap Time
-stat_time, p_time = stats.wilcoxon(
-    map_lap_times,
-    ml_lap_times,
-    alternative='two-sided'
-)
-
-# =============================================================
-# PRINT RESULTS
-# =============================================================
+# Wilcoxon signed-rank test (non-parametric, paired)
+stat_error, p_error = stats.wilcoxon(map_lateral_errors, ml_lateral_errors, alternative='two-sided')
+stat_time,  p_time  = stats.wilcoxon(map_lap_times,      ml_lap_times,      alternative='two-sided')
 
 print("=" * 60)
 print("        WILCOXON SIGNED-RANK TEST RESULTS")
 print("=" * 60)
 
-print("\n📊 Lateral Error")
-print(f"MAP Mean        : {np.mean(map_lateral_errors):.4f} m")
-print(f"ML Mean         : {np.mean(ml_lateral_errors):.4f} m")
-print(f"Wilcoxon Stat   : {stat_error:.4f}")
-print(f"p-value         : {p_error:.6f}")
+print(f"\nLateral Error")
+print(f"  MAP mean : {np.mean(map_lateral_errors):.4f} m")
+print(f"  ML mean  : {np.mean(ml_lateral_errors):.4f} m")
+print(f"  stat={stat_error:.4f}  p={p_error:.6f}")
+print(f"  {'Significant difference' if p_error < 0.05 else 'No significant difference'}")
 
-if p_error < 0.05:
-    print("Result          : ✅ Significant Difference")
-else:
-    print("Result          : ❌ Not Significant")
+print(f"\nLap Time")
+print(f"  MAP mean : {np.mean(map_lap_times):.4f} s")
+print(f"  ML mean  : {np.mean(ml_lap_times):.4f} s")
+print(f"  stat={stat_time:.4f}  p={p_time:.6f}")
+print(f"  {'Significant difference' if p_time < 0.05 else 'No significant difference'}")
 
-print("\n⏱️ Lap Time")
-print(f"MAP Mean        : {np.mean(map_lap_times):.4f} s")
-print(f"ML Mean         : {np.mean(ml_lap_times):.4f} s")
-print(f"Wilcoxon Stat   : {stat_time:.4f}")
-print(f"p-value         : {p_time:.6f}")
 
-if p_time < 0.05:
-    print("Result          : ✅ Significant Difference")
-else:
-    print("Result          : ❌ Not Significant")
+def cohens_d(a, b):
+    diff = np.mean(a) - np.mean(b)
+    pooled_std = np.sqrt((np.std(a)**2 + np.std(b)**2) / 2)
+    return abs(diff / pooled_std)
 
-# =============================================================
-# EFFECT SIZE — COHEN'S D
-# =============================================================
-
-def cohens_d(group1, group2):
-    diff   = np.mean(group1) - np.mean(group2)
-    pooled = np.sqrt(
-        (np.std(group1)**2 + np.std(group2)**2) / 2
-    )
-    return abs(diff / pooled)
+def effect_label(d):
+    if d < 0.2: return "Negligible"
+    if d < 0.5: return "Small"
+    if d < 0.8: return "Medium"
+    return "Large"
 
 d_error = cohens_d(map_lateral_errors, ml_lateral_errors)
 d_time  = cohens_d(map_lap_times, ml_lap_times)
 
-print("\n📏 EFFECT SIZE (Cohen's d)")
+print(f"\nEffect size (Cohen's d)")
+print(f"  Lateral error : {d_error:.4f} ({effect_label(d_error)})")
+print(f"  Lap time      : {d_time:.4f}  ({effect_label(d_time)})")
 
-print(f"Lateral Error : {d_error:.4f}", end=" → ")
-if d_error < 0.2:
-    print("Negligible")
-elif d_error < 0.5:
-    print("Small")
-elif d_error < 0.8:
-    print("Medium")
-else:
-    print("Large")
-
-print(f"Lap Time      : {d_time:.4f}", end=" → ")
-if d_time < 0.2:
-    print("Negligible")
-elif d_time < 0.5:
-    print("Small")
-elif d_time < 0.8:
-    print("Medium")
-else:
-    print("Large")
-
-# =============================================================
-# VISUALIZATION
-# 2x2 Figure:
-#   1. Paired Line Plot (Lateral Error)
-#   2. Box Plot        (Lateral Error)
-#   3. Paired Line Plot (Lap Time)
-#   4. Box Plot         (Lap Time)
-# =============================================================
 
 fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+fig.suptitle('MAP vs ML Controller — Wilcoxon Statistical Comparison',
+             fontsize=16, fontweight='bold')
 
-fig.suptitle(
-    'MAP vs ML Controller — Wilcoxon Statistical Comparison',
-    fontsize=16,
-    fontweight='bold'
-)
+for row, (map_data, ml_data, ylabel, stat, p) in enumerate([
+    (map_lateral_errors, ml_lateral_errors, 'Lateral Error (m)', stat_error, p_error),
+    (map_lap_times,      ml_lap_times,      'Lap Time (s)',      stat_time,  p_time),
+]):
+    # Paired line plot
+    ax = axes[row, 0]
+    for i in range(len(map_data)):
+        ax.plot(['MAP', 'ML'], [map_data[i], ml_data[i]], marker='o', alpha=0.6)
+    ax.hlines(np.mean(map_data), -0.1, 0.1, lw=4, label='MAP mean')
+    ax.hlines(np.mean(ml_data),   0.9, 1.1, lw=4, label='ML mean')
+    ax.set_title(f'Paired Comparison — {ylabel.split(" (")[0]}\np = {p:.6f}')
+    ax.set_ylabel(ylabel)
+    ax.legend()
+    ax.grid(True)
 
-# =============================================================
-# PLOT 1 — PAIRED LINE PLOT (LATERAL ERROR)
-# =============================================================
-
-ax = axes[0, 0]
-
-for i in range(len(map_lateral_errors)):
-    ax.plot(
-        ['MAP', 'ML'],
-        [map_lateral_errors[i], ml_lateral_errors[i]],
-        marker='o'
-    )
-
-ax.set_title(
-    f'Paired Comparison — Lateral Error\np = {p_error:.6f}'
-)
-
-ax.set_ylabel('Lateral Error (m)')
-ax.grid(True)
-
-# Mean lines
-ax.hlines(
-    np.mean(map_lateral_errors),
-    xmin=-0.1,
-    xmax=0.1,
-    linewidth=4,
-    label='MAP Mean'
-)
-
-ax.hlines(
-    np.mean(ml_lateral_errors),
-    xmin=0.9,
-    xmax=1.1,
-    linewidth=4,
-    label='ML Mean'
-)
-
-ax.legend()
-
-# =============================================================
-# PLOT 2 — BOX PLOT (LATERAL ERROR)
-# =============================================================
-
-ax = axes[0, 1]
-
-ax.boxplot(
-    [map_lateral_errors, ml_lateral_errors],
-    labels=['MAP', 'ML'],
-    patch_artist=True
-)
-
-ax.set_title(
-    f'Box Plot — Lateral Error\np = {p_error:.6f}'
-)
-
-ax.set_ylabel('Lateral Error (m)')
-ax.grid(True)
-
-# =============================================================
-# PLOT 3 — PAIRED LINE PLOT (LAP TIME)
-# =============================================================
-
-ax = axes[1, 0]
-
-for i in range(len(map_lap_times)):
-    ax.plot(
-        ['MAP', 'ML'],
-        [map_lap_times[i], ml_lap_times[i]],
-        marker='o'
-    )
-
-ax.set_title(
-    f'Paired Comparison — Lap Time\np = {p_time:.6f}'
-)
-
-ax.set_ylabel('Lap Time (s)')
-ax.grid(True)
-
-# Mean lines
-ax.hlines(
-    np.mean(map_lap_times),
-    xmin=-0.1,
-    xmax=0.1,
-    linewidth=4,
-    label='MAP Mean'
-)
-
-ax.hlines(
-    np.mean(ml_lap_times),
-    xmin=0.9,
-    xmax=1.1,
-    linewidth=4,
-    label='ML Mean'
-)
-
-ax.legend()
-
-# =============================================================
-# PLOT 4 — BOX PLOT (LAP TIME)
-# =============================================================
-
-ax = axes[1, 1]
-
-ax.boxplot(
-    [map_lap_times, ml_lap_times],
-    labels=['MAP', 'ML'],
-    patch_artist=True
-)
-
-ax.set_title(
-    f'Box Plot — Lap Time\np = {p_time:.6f}'
-)
-
-ax.set_ylabel('Lap Time (s)')
-ax.grid(True)
-
-# =============================================================
-# SAVE + SHOW
-# =============================================================
+    # Box plot
+    ax = axes[row, 1]
+    ax.boxplot([map_data, ml_data], labels=['MAP', 'ML'], patch_artist=True)
+    ax.set_title(f'Box Plot — {ylabel.split(" (")[0]}\np = {p:.6f}')
+    ax.set_ylabel(ylabel)
+    ax.grid(True)
 
 plt.tight_layout()
-
-plt.savefig(
-    "wilcoxon_paired_test_final_portomap.png",
-    dpi=300,
-    bbox_inches='tight'
-)
-
-
+plt.savefig(OUT_PATH, dpi=300, bbox_inches='tight')
+print(f"\nSaved -> {OUT_PATH}")
 plt.show()
-
-print("\n✅ Figure saved as:")
-print("wilcoxon_paired_test_finl_portomap.png")
