@@ -23,7 +23,7 @@ class MLController:
 
         self.loop_rate = 40
         self.LOOKAHEAD = 10
-        self.velocity_scale = 0.825
+        self.velocity_scale = 0.92
 
         # Architecture must match training exactly
         self.model = nn.Sequential(

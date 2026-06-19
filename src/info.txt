@@ -102,7 +102,7 @@ generalizes to tracks it has never seen.
   ── Recording an NN controller run (for trajectory comparison) ──────────────
   Terminal 1: roslaunch map_controller sim_ML_controller.launch map_name:=<mapname>
   Terminal 2: cd ~/f110_ws/src/Data/bag_files
-              rosbag record -O nn_<mapname>_<velocity>.bag \
+              rosbag record -O nn_<map_name>_<speed>.bag \
                 /car_state/odom \
                 /car_state/pose \
                 /global_waypoints \
